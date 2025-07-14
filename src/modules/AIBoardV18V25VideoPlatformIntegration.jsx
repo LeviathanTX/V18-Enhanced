@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { 
   Video, VideoOff, Mic, MicOff, PhoneOff, Users, FileText, 
-  Maximize2, Minimize2, X, Settings, Share2, Record, 
+  Maximize2, Minimize2, X, Settings, Share2, Circle, 
   Calendar, Clock, Play, Pause, Download, MessageSquare,
   Brain, BarChart3, Shield, AlertCircle, CheckCircle,
   Loader2, Plus, Monitor, Camera, Volume2, VolumeX,
