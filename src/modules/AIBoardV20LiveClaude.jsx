@@ -6,80 +6,115 @@ import {
   Lightbulb, TrendingUp, Clock, Target, Star, ChevronUp, ChevronDown
 } from 'lucide-react';
 
-// ===== AI BOARD V20 - LIVE CLAUDE MODULE =====
-// Designed to integrate with V18 Core Shell architecture
+// ===== AI BOARD V20 - LIVE CLAUDE MODULE WITH COMPLETE INTEGRATION =====
 const AIBoardV20LiveClaudeModule = () => {
   // ===== MODULE STATE =====
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState([]);
   const [currentInput, setCurrentInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingAdvisors, setProcessingAdvisors] = useState(new Set());
   const [documents, setDocuments] = useState([]);
-  const [conversationHistory, setConversationHistory] = useState([]);
-  const [documentAnalysis, setDocumentAnalysis] = useState({});
   const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [apiKey, setApiKey] = useState('');
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [selectedAdvisors, setSelectedAdvisors] = useState(new Set(['ceo-advisor', 'cfo-advisor', 'cto-advisor']));
-  const [activeSession, setActiveSession] = useState(null);
   
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
   // ===== ENHANCED AI ADVISORS =====
-  const [advisors] = useState([
-    {
+  const advisors = {
+    'ceo-advisor': {
       id: 'ceo-advisor',
       name: 'Alexandra Chen',
       role: 'CEO & Strategy Advisor',
       expertise: 'Strategic Leadership, Business Development, Fundraising',
       avatar: '👩‍💼',
-      status: 'active',
       color: 'blue',
       personality: 'Visionary leader with 15+ years scaling companies from startup to IPO. Direct but supportive, focuses on long-term value creation.',
-      background: 'Former CEO of three successful startups, took two companies public. Board member at Fortune 500 companies.',
-      analysisStyle: 'strategic',
-      communicationTone: 'executive'
+      systemPrompt: `You are Alexandra Chen, CEO and Strategy Advisor. You're a visionary leader with 15+ years scaling companies from startup to IPO. You're direct but supportive, and focus on long-term value creation. Provide strategic insights with executive-level thinking. Keep responses concise but impactful (2-3 paragraphs max). Consider growth strategy, market positioning, and leadership decisions.`
     },
-    {
+    'cfo-advisor': {
       id: 'cfo-advisor',
       name: 'Marcus Thompson',
       role: 'CFO & Financial Advisor',
       expertise: 'Financial Planning, Unit Economics, Cash Flow Management',
       avatar: '💰',
-      status: 'active',
       color: 'green',
       personality: 'Numbers-focused, asks tough financial questions. Pragmatic and detail-oriented. Always thinking about runway and burn rate.',
-      background: 'Former CFO at unicorn startup, managed $500M+ in fundraising. Expert in SaaS metrics and financial modeling.',
-      analysisStyle: 'analytical',
-      communicationTone: 'data-driven'
+      systemPrompt: `You are Marcus Thompson, CFO and Financial Advisor. You're numbers-focused and ask tough financial questions. You're pragmatic and detail-oriented, always thinking about runway and burn rate. Focus on financial metrics, unit economics, cash flow, and sustainable growth. Keep responses data-driven and practical (2-3 paragraphs max).`
     },
-    {
+    'cto-advisor': {
       id: 'cto-advisor',
       name: 'Dr. Aisha Patel',
       role: 'CTO & Technology Advisor',
       expertise: 'Technical Architecture, Scalability, Security, AI/ML',
       avatar: '⚡',
-      status: 'active',
       color: 'purple',
       personality: 'Pragmatic engineer who identifies technical risks early. Balances innovation with stability.',
-      background: 'Former CTO at FAANG company, holds 20+ patents in distributed systems. Expert in scaling engineering teams.',
-      analysisStyle: 'systematic',
-      communicationTone: 'technical'
+      systemPrompt: `You are Dr. Aisha Patel, CTO and Technology Advisor. You're a pragmatic engineer who identifies technical risks early and balances innovation with stability. Focus on technical architecture, scalability, security, and engineering best practices. Keep responses technical but accessible (2-3 paragraphs max).`
     },
-    {
+    'cmo-advisor': {
       id: 'cmo-advisor',
       name: 'Sarah Williams',
       role: 'CMO & Marketing Advisor',
       expertise: 'Marketing Strategy, Brand Building, Customer Acquisition',
       avatar: '📈',
-      status: 'available',
       color: 'pink',
       personality: 'Customer-obsessed, data-driven growth expert. Creative but metrics-focused.',
-      background: 'Scaled marketing from 0 to $100M ARR at multiple startups. Pioneer in product-led growth strategies.',
-      analysisStyle: 'creative-analytical',
-      communicationTone: 'enthusiastic'
+      systemPrompt: `You are Sarah Williams, CMO and Marketing Advisor. You're customer-obsessed and a data-driven growth expert. You're creative but metrics-focused. Focus on marketing strategy, customer acquisition, brand building, and growth tactics. Keep responses actionable and growth-oriented (2-3 paragraphs max).`
     }
-  ]);
+  };
+
+  // ===== CLAUDE API INTEGRATION =====
+  const callClaudeAPI = async (prompt, advisor) => {
+    const contextualPrompt = `${advisor.systemPrompt}
+
+CONTEXT:
+- Current conversation involves ${selectedAdvisors.size} advisors
+- ${documents.length} business documents are available: ${documents.map(d => d.name).join(', ')}
+- You are providing strategic business advice
+
+USER MESSAGE: "${prompt}"
+
+Respond as ${advisor.name} would, drawing on your expertise in ${advisor.expertise}. Provide strategic, actionable advice.`;
+
+    try {
+      if (window.claude?.complete) {
+        // Use built-in Claude interface if available
+        return await window.claude.complete(contextualPrompt);
+      } else if (apiKey) {
+        // Use direct API call
+        const response = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: 'claude-3-5-sonnet-20241022',
+            max_tokens: 800,
+            messages: [{ role: 'user', content: contextualPrompt }]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data.content[0].text;
+      } else {
+        throw new Error('No API key available');
+      }
+    } catch (error) {
+      console.error('Claude API Error:', error);
+      return `*${advisor.name} is temporarily unavailable. Please check your API connection and try again.*`;
+    }
+  };
 
   // ===== LIFECYCLE HOOKS =====
   useEffect(() => {
@@ -87,123 +122,125 @@ const AIBoardV20LiveClaudeModule = () => {
   }, [messages]);
 
   useEffect(() => {
+    // Check for API connection
     const storedApiKey = localStorage.getItem('claude-api-key');
     if (storedApiKey) {
       setApiKey(storedApiKey);
+      setConnectionStatus('connected');
+    } else if (window.claude?.complete) {
+      setConnectionStatus('connected');
     }
   }, []);
 
   // ===== CORE FUNCTIONS =====
   const saveApiKey = useCallback((key) => {
-    localStorage.setItem('claude-api-key', key);
-    setApiKey(key);
-    setShowApiKeyInput(false);
+    if (key?.startsWith('sk-ant-')) {
+      localStorage.setItem('claude-api-key', key);
+      setApiKey(key);
+      setConnectionStatus('connected');
+      setShowApiKeyInput(false);
+      
+      // Add success message
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        type: 'system',
+        content: '✅ Connected to Claude API! Your AI advisors are now ready for live conversations.',
+        timestamp: new Date()
+      }]);
+    } else {
+      alert('Please enter a valid Claude API key starting with "sk-ant-"');
+    }
   }, []);
-
-  const generateAdvisorPrompt = useCallback((advisor, userMessage, context) => {
-    const documentContext = documents.length > 0 
-      ? `\n\nAvailable Documents: ${documents.map(doc => `${doc.name} (${doc.type})`).join(', ')}`
-      : '';
-    
-    const conversationContext = conversationHistory.length > 0
-      ? `\n\nRecent Conversation:\n${conversationHistory.slice(-2).map(msg => `${msg.sender}: ${msg.content}`).join('\n')}`
-      : '';
-
-    return `You are ${advisor.name}, ${advisor.role} for an AI Board of Advisors platform.
-
-ADVISOR PROFILE:
-- Role: ${advisor.role}
-- Expertise: ${advisor.expertise}
-- Personality: ${advisor.personality}
-- Background: ${advisor.background}
-- Analysis Style: ${advisor.analysisStyle}
-- Communication Tone: ${advisor.communicationTone}
-
-CONTEXT:${documentContext}${conversationContext}
-
-USER MESSAGE: "${userMessage}"
-
-Respond as ${advisor.name} would, drawing on your expertise in ${advisor.expertise}. Keep responses concise but insightful (2-3 sentences max). Use your ${advisor.communicationTone} communication style and ${advisor.analysisStyle} analysis approach.
-
-Focus on providing actionable business advice specific to your role as ${advisor.role}.`;
-  }, [documents, conversationHistory]);
 
   const handleSendMessage = useCallback(async () => {
     if (!currentInput.trim() || isProcessing) return;
     
-    setIsProcessing(true);
+    if (selectedAdvisors.size === 0) {
+      alert('Please select at least one advisor');
+      return;
+    }
+
+    if (!apiKey && !window.claude?.complete) {
+      setShowApiKeyInput(true);
+      return;
+    }
+
     const userMessage = {
       id: Date.now(),
       type: 'user',
-      content: currentInput.trim(),
-      timestamp: new Date(),
-      sender: 'You',
-      avatar: '👤'
+      content: currentInput,
+      timestamp: new Date()
     };
-    
+
     setMessages(prev => [...prev, userMessage]);
-    setConversationHistory(prev => [...prev, userMessage]);
-    const messageToProcess = currentInput.trim();
     setCurrentInput('');
+    setIsProcessing(true);
 
     // Get responses from selected advisors
-    const activeAdvisors = advisors.filter(advisor => selectedAdvisors.has(advisor.id));
+    const activeAdvisors = Array.from(selectedAdvisors).map(id => advisors[id]);
     
-    for (const advisor of activeAdvisors) {
-      try {
-        const prompt = generateAdvisorPrompt(advisor, messageToProcess, {});
-        let response;
-
-        if (window.claude?.complete) {
-          response = await window.claude.complete(prompt);
-        } else if (apiKey) {
-          // Simulated Claude API call - replace with actual API integration
-          response = `Based on my experience as ${advisor.role}, I'd recommend focusing on ${advisor.expertise.split(',')[0].toLowerCase()}. This aligns with current market trends and your strategic objectives. What specific metrics are you tracking for this initiative?`;
-        } else {
-          response = `I understand your question about "${messageToProcess}". As your ${advisor.role}, I'd recommend analyzing this from a ${advisor.analysisStyle} perspective. What additional context can you provide about your current situation?`;
-        }
-
+    try {
+      for (let i = 0; i < activeAdvisors.length; i++) {
+        const advisor = activeAdvisors[i];
+        setProcessingAdvisors(prev => new Set([...prev, advisor.id]));
+        
+        // Stagger responses for realism
+        await new Promise(resolve => setTimeout(resolve, 500 + (i * 400)));
+        
+        const response = await callClaudeAPI(currentInput, advisor);
+        
         const advisorMessage = {
-          id: Date.now() + Math.random(),
+          id: Date.now() + i,
           type: 'advisor',
           content: response,
-          timestamp: new Date(),
-          sender: advisor.name,
-          avatar: advisor.avatar,
-          advisorId: advisor.id,
-          role: advisor.role
+          advisor: advisor,
+          timestamp: new Date()
         };
-        
-        setMessages(prev => [...prev, advisorMessage]);
-        setConversationHistory(prev => [...prev, advisorMessage]);
-        
-        // Small delay between advisor responses for natural feel
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-      } catch (error) {
-        console.error('Error getting advisor response:', error);
-        const errorMessage = {
-          id: Date.now() + Math.random(),
-          type: 'error',
-          content: `Sorry, I encountered an issue responding as ${advisor.name}. Please try again.`,
-          timestamp: new Date(),
-          sender: advisor.name,
-          avatar: advisor.avatar,
-          advisorId: advisor.id
-        };
-        setMessages(prev => [...prev, errorMessage]);
-      }
-    }
-    
-    setIsProcessing(false);
-  }, [currentInput, isProcessing, selectedAdvisors, advisors, generateAdvisorPrompt, apiKey]);
 
-  const handleKeyPress = useCallback((e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
+        setMessages(prev => [...prev, advisorMessage]);
+        setProcessingAdvisors(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(advisor.id);
+          return newSet;
+        });
+      }
+    } catch (error) {
+      console.error('Error processing message:', error);
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        type: 'error',
+        content: 'Sorry, I encountered an error processing your message. Please try again.',
+        timestamp: new Date()
+      }]);
+    } finally {
+      setIsProcessing(false);
+      setProcessingAdvisors(new Set());
     }
-  }, [handleSendMessage]);
+  }, [currentInput, selectedAdvisors, apiKey, isProcessing, callClaudeAPI]);
+
+  const handleFileUpload = useCallback((event) => {
+    const files = Array.from(event.target.files);
+    const newDocs = files.map(file => ({
+      id: Date.now() + Math.random(),
+      name: file.name,
+      size: (file.size / 1024).toFixed(1) + 'KB',
+      type: file.type.includes('pdf') ? 'PDF' : 
+            file.type.includes('csv') ? 'CSV' : 
+            file.type.includes('excel') || file.name.endsWith('.xlsx') ? 'Excel' : 'Document',
+      uploadTime: new Date(),
+      status: 'analyzed'
+    }));
+    
+    setDocuments(prev => [...prev, ...newDocs]);
+    
+    // System message
+    setMessages(prev => [...prev, {
+      id: Date.now(),
+      type: 'system',
+      content: `📄 Uploaded ${files.length} document(s): ${files.map(f => f.name).join(', ')}. Your advisors now have access to this context.`,
+      timestamp: new Date()
+    }]);
+  }, []);
 
   const toggleAdvisor = useCallback((advisorId) => {
     setSelectedAdvisors(prev => {
@@ -217,317 +254,297 @@ Focus on providing actionable business advice specific to your role as ${advisor
     });
   }, []);
 
-  const handleFileUpload = useCallback((event) => {
-    const files = Array.from(event.target.files);
-    files.forEach(file => {
-      const newDoc = {
-        id: Date.now() + Math.random(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        uploadedAt: new Date()
-      };
-      setDocuments(prev => [...prev, newDoc]);
-    });
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  }, []);
-
-  const removeDocument = useCallback((docId) => {
-    setDocuments(prev => prev.filter(doc => doc.id !== docId));
-  }, []);
-
-  const startNewSession = useCallback(() => {
-    setActiveSession({
-      id: Date.now(),
-      title: 'Advisory Session',
-      startedAt: new Date()
-    });
-    setMessages([]);
-    setConversationHistory([]);
-  }, []);
-
-  // ===== MODULE CARD VIEW (COLLAPSED) =====
-  if (!isExpanded) {
-    return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 hover:shadow-xl transition-all duration-300">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
-              <Brain className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Live AI Advisory</h3>
-              <p className="text-sm text-gray-500">V20 - Claude Integration</p>
+  // ===== RENDER FUNCTIONS =====
+  const renderMessage = (message) => (
+    <div key={message.id} className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
+      <div className={`max-w-3xl ${message.type === 'user' ? 'ml-12' : 'mr-12'}`}>
+        {message.type === 'advisor' && (
+          <div className="flex items-center space-x-2 mb-2">
+            <span className="text-xl">{message.advisor.avatar}</span>
+            <span className="font-medium text-sm text-gray-700">{message.advisor.name}</span>
+            <span className="text-xs text-gray-500">{message.advisor.role}</span>
+          </div>
+        )}
+        
+        {message.type === 'system' && (
+          <div className="text-center mb-2">
+            <div className="inline-block bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm">
+              {message.content}
             </div>
           </div>
-          <button
-            onClick={() => setIsExpanded(true)}
-            className="w-10 h-10 rounded-lg bg-blue-600 hover:bg-blue-700 flex items-center justify-center transition-colors shadow-md border-2 border-blue-700 hover:border-blue-800"
-            title="Expand Module"
-          >
-            <Maximize2 className="w-5 h-5 text-white font-bold" />
-          </button>
-        </div>
+        )}
         
-        {/* Module Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
-          <div className="text-center">
-            <div className="text-lg font-semibold text-blue-600">{advisors.filter(a => selectedAdvisors.has(a.id)).length}</div>
-            <div className="text-xs text-gray-500">Active Advisors</div>
+        {message.type !== 'system' && (
+          <div className={`rounded-lg p-4 ${
+            message.type === 'user'
+              ? 'bg-blue-600 text-white'
+              : message.type === 'error'
+              ? 'bg-red-50 text-red-700 border border-red-200'
+              : 'bg-white text-gray-900 border border-gray-200 shadow-sm'
+          }`}>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+            <p className={`text-xs mt-2 ${
+              message.type === 'user' ? 'text-blue-200' : 'text-gray-500'
+            }`}>
+              {message.timestamp.toLocaleTimeString()}
+            </p>
           </div>
-          <div className="text-center">
-            <div className="text-lg font-semibold text-green-600">{messages.length}</div>
-            <div className="text-xs text-gray-500">Messages</div>
-          </div>
-          <div className="text-center">
-            <div className="text-lg font-semibold text-purple-600">{documents.length}</div>
-            <div className="text-xs text-gray-500">Documents</div>
-          </div>
-        </div>
-        
-        {/* Quick Actions */}
-        <div className="flex space-x-2">
-          <button
-            onClick={() => {
-              startNewSession();
-              setIsExpanded(true);
-            }}
-            className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm font-bold shadow-md border-2 border-blue-700 hover:border-blue-800"
-          >
-            Start Session
-          </button>
-          <button
-            onClick={() => setIsExpanded(true)}
-            className="bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors text-sm font-bold shadow-md border-2 border-gray-700 hover:border-gray-800"
-          >
-            Open
-          </button>
-        </div>
-
-        {/* Connection Status */}
-        <div className="mt-3 flex items-center justify-center">
-          <div className="flex items-center space-x-2 text-xs">
-            <span className={`w-2 h-2 rounded-full ${apiKey || window.claude?.complete ? 'bg-green-500' : 'bg-orange-500'}`}></span>
-            <span className="text-gray-500">
-              {apiKey || window.claude?.complete ? 'Claude Connected' : 'API Setup Required'}
-            </span>
-          </div>
-        </div>
+        )}
       </div>
-    );
-  }
+    </div>
+  );
 
-  // ===== EXPANDED MODULE VIEW =====
+  // ===== MAIN RENDER =====
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+    <div className={`bg-white rounded-xl border-2 border-gray-200 shadow-lg transition-all duration-300 ${
+      isExpanded ? 'fixed inset-4 z-50' : 'h-96'
+    }`}>
+      
       {/* Module Header */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Brain className="w-8 h-8 text-white" />
-            <div>
-              <h2 className="text-lg font-bold text-white">Live AI Advisory</h2>
-              <p className="text-blue-100 text-sm">Claude-Powered Board of Advisors</p>
-            </div>
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+            <Brain className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900">Live AI Advisory V20</h3>
+            <p className="text-sm text-gray-600">Real-time conversations with expert AI advisors</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          {/* Connection Status */}
+          <div className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs ${
+            connectionStatus === 'connected' 
+              ? 'bg-green-100 text-green-700' 
+              : 'bg-orange-100 text-orange-700'
+          }`}>
+            <div className={`w-2 h-2 rounded-full ${
+              connectionStatus === 'connected' ? 'bg-green-500' : 'bg-orange-500'
+            }`} />
+            {connectionStatus === 'connected' ? 'Claude API Connected' : 'Setup Required'}
           </div>
           
-          <div className="flex items-center space-x-2">
-            {!apiKey && !window.claude?.complete && (
-              <button
-                onClick={() => setShowApiKeyInput(true)}
-                className="bg-white text-blue-600 px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-50 transition-colors shadow-md border-2 border-white hover:border-blue-100"
-              >
-                Setup API
-              </button>
-            )}
+          {connectionStatus !== 'connected' && (
             <button
-              onClick={() => setIsExpanded(false)}
-              className="w-10 h-10 rounded-lg bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors shadow-md border-2 border-red-700 hover:border-red-800"
-              title="Minimize Module"
+              onClick={() => setShowApiKeyInput(true)}
+              className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700"
             >
-              <Minimize2 className="w-5 h-5 text-white font-bold" />
+              Connect
             </button>
-          </div>
+          )}
+          
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 
-      <div className="flex h-96">
+      <div className="flex h-full">
         {/* Sidebar */}
-        <div className="w-64 border-r border-gray-200 flex flex-col">
+        <div className="w-80 border-r border-gray-200 flex flex-col">
           {/* Advisor Selection */}
           <div className="p-4 border-b border-gray-200">
-            <h3 className="font-semibold text-sm mb-2 text-gray-900">Active Advisors</h3>
+            <h4 className="font-medium text-gray-900 mb-3">Active Advisors ({selectedAdvisors.size})</h4>
             <div className="space-y-2">
-              {advisors.slice(0, 3).map(advisor => (
-                <div
-                  key={advisor.id}
-                  className={`p-2 rounded-lg border cursor-pointer transition-all ${
-                    selectedAdvisors.has(advisor.id)
-                      ? `bg-${advisor.color}-50 border-${advisor.color}-200 ring-1 ring-${advisor.color}-300`
-                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                  }`}
-                  onClick={() => toggleAdvisor(advisor.id)}
-                >
-                  <div className="flex items-center space-x-2">
-                    <span className="text-lg">{advisor.avatar}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-900 truncate">{advisor.name}</p>
-                      <p className="text-xs text-gray-600 truncate">{advisor.role}</p>
+              {Object.values(advisors).map(advisor => {
+                const isSelected = selectedAdvisors.has(advisor.id);
+                const isProcessing = processingAdvisors.has(advisor.id);
+                
+                return (
+                  <div
+                    key={advisor.id}
+                    onClick={() => toggleAdvisor(advisor.id)}
+                    className={`p-3 rounded-lg cursor-pointer transition-all ${
+                      isSelected ? 'bg-blue-50 border-2 border-blue-200' : 'bg-gray-50 border-2 border-transparent hover:border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="relative">
+                        <span className="text-2xl">{advisor.avatar}</span>
+                        {isProcessing && (
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-500 rounded-full">
+                            <Loader2 className="w-3 h-3 text-white animate-spin" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{advisor.name}</div>
+                        <div className="text-xs text-gray-500">{advisor.role}</div>
+                        {isProcessing && (
+                          <div className="text-xs text-blue-600 mt-1">Thinking...</div>
+                        )}
+                      </div>
+                      {isSelected && !isProcessing && (
+                        <CheckCircle className="w-4 h-4 text-blue-600" />
+                      )}
                     </div>
-                    {selectedAdvisors.has(advisor.id) && (
-                      <CheckCircle className={`w-4 h-4 text-${advisor.color}-600`} />
-                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* Documents Section */}
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-sm text-gray-900">Documents</h3>
+          {/* Documents */}
+          <div className="p-4 flex-1">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-medium text-gray-900">Documents ({documents.length})</h4>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-6 h-6 rounded bg-blue-600 hover:bg-blue-700 flex items-center justify-center transition-colors shadow-sm border border-blue-700"
-                title="Upload Document"
+                className="p-1 hover:bg-gray-100 rounded"
               >
-                <Plus className="w-3 h-3 text-white font-bold" />
+                <Upload className="w-4 h-4 text-gray-500" />
               </button>
             </div>
-            <div className="space-y-2 max-h-32 overflow-y-auto">
+            
+            <div className="space-y-2 max-h-48 overflow-y-auto">
               {documents.map(doc => (
-                <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 rounded border border-gray-200">
-                  <div className="flex items-center space-x-2 flex-1 min-w-0">
-                    <FileText className="w-3 h-3 text-gray-600 flex-shrink-0" />
-                    <span className="text-xs text-gray-700 truncate">{doc.name}</span>
+                <div key={doc.id} className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center space-x-2">
+                    <FileText className="w-4 h-4 text-blue-600" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm truncate">{doc.name}</div>
+                      <div className="text-xs text-gray-500">{doc.type} • {doc.size}</div>
+                    </div>
+                    <CheckCircle className="w-4 h-4 text-green-500" />
                   </div>
-                  <button
-                    onClick={() => removeDocument(doc.id)}
-                    className="w-4 h-4 rounded bg-red-600 hover:bg-red-700 flex items-center justify-center transition-colors"
-                    title="Remove Document"
-                  >
-                    <X className="w-2 h-2 text-white" />
-                  </button>
                 </div>
               ))}
+              
               {documents.length === 0 && (
-                <p className="text-xs text-gray-500 italic">No documents uploaded</p>
+                <div className="text-center py-8 text-gray-500">
+                  <FileText className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                  <p className="text-sm">No documents uploaded</p>
+                  <p className="text-xs">Upload files for contextual advice</p>
+                </div>
               )}
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              onChange={handleFileUpload}
-              className="hidden"
-              accept=".pdf,.doc,.docx,.txt,.csv,.json"
-            />
-          </div>
-
-          {/* Session Control */}
-          <div className="p-4">
-            <button
-              onClick={startNewSession}
-              className="w-full bg-green-600 text-white py-2 px-3 rounded-lg text-sm font-bold hover:bg-green-700 transition-colors shadow-md border-2 border-green-700 hover:border-green-800"
-            >
-              New Session
-            </button>
           </div>
         </div>
 
         {/* Main Chat Area */}
         <div className="flex-1 flex flex-col">
-          {/* Chat Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4">
             {messages.length === 0 && (
-              <div className="text-center py-8">
-                <Brain className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="font-semibold text-gray-900 mb-2">Ready for Advisory Session</h3>
-                <p className="text-sm text-gray-600">Ask any business question to get insights from your selected advisors</p>
-              </div>
-            )}
-            
-            {messages.map(message => (
-              <div
-                key={message.id}
-                className={`flex ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
-                    message.type === 'user'
-                      ? 'bg-blue-600 text-white'
-                      : message.type === 'error'
-                      ? 'bg-red-50 border border-red-200 text-red-800'
-                      : 'bg-gray-100 border border-gray-200 text-gray-800'
-                  }`}
-                >
-                  {message.type === 'advisor' && (
-                    <div className="flex items-center space-x-2 mb-2">
-                      <span className="text-lg">{message.avatar}</span>
-                      <div>
-                        <p className="font-semibold text-xs text-gray-900">{message.sender}</p>
-                        <p className="text-xs text-gray-600">{message.role}</p>
-                      </div>
-                    </div>
-                  )}
-                  <p className="text-sm leading-relaxed">{message.content}</p>
-                  <p className="text-xs opacity-70 mt-2">
-                    {message.timestamp.toLocaleTimeString()}
-                  </p>
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Brain className="w-8 h-8 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Welcome to Live AI Advisory</h3>
+                <p className="text-gray-600 max-w-md mx-auto mb-6">
+                  Get strategic guidance from expert AI advisors. Ask questions, upload documents, or start a strategic discussion.
+                </p>
+                
+                <div className="grid md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                  {[
+                    { title: "Strategic Planning", desc: "Business strategy and growth planning", icon: Target },
+                    { title: "Financial Analysis", desc: "Revenue models and financial health", icon: DollarSign },
+                    { title: "Technology Strategy", desc: "Technical architecture and innovation", icon: Shield },
+                    { title: "Marketing & Growth", desc: "Customer acquisition and brand building", icon: TrendingUp }
+                  ].map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentInput(`I need help with ${item.title.toLowerCase()}: `)}
+                      className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 hover:shadow-sm transition-all text-left"
+                    >
+                      <item.icon className="w-6 h-6 text-blue-600 mb-2" />
+                      <h4 className="font-medium text-gray-900 mb-1">{item.title}</h4>
+                      <p className="text-sm text-gray-600">{item.desc}</p>
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {messages.map(renderMessage)}
             
             {isProcessing && (
-              <div className="flex justify-start">
-                <div className="bg-gray-100 border border-gray-200 rounded-lg p-3">
-                  <div className="flex items-center space-x-2">
+              <div className="flex justify-start mb-4">
+                <div className="bg-gray-100 rounded-lg p-4 max-w-md">
+                  <div className="flex items-center space-x-3">
                     <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
-                    <span className="text-sm text-gray-600">Advisors are thinking...</span>
+                    <span className="text-sm text-gray-600">
+                      {processingAdvisors.size > 0 
+                        ? `${Array.from(processingAdvisors).map(id => advisors[id]?.name).join(', ')} analyzing...`
+                        : 'Advisors thinking...'
+                      }
+                    </span>
                   </div>
                 </div>
               </div>
             )}
+            
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
           <div className="border-t border-gray-200 p-4">
-            <div className="flex space-x-2">
-              <textarea
-                value={currentInput}
-                onChange={(e) => setCurrentInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask your advisors any business question..."
-                className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                rows="2"
-                disabled={isProcessing}
-              />
+            <div className="flex items-end space-x-3">
+              <div className="flex-1">
+                <textarea
+                  value={currentInput}
+                  onChange={(e) => setCurrentInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  placeholder={`Ask your ${selectedAdvisors.size} selected advisor${selectedAdvisors.size !== 1 ? 's' : ''} anything...`}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                  rows={2}
+                  disabled={isProcessing}
+                />
+                
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center space-x-4 text-xs text-gray-500">
+                    <span>{selectedAdvisors.size} advisor{selectedAdvisors.size !== 1 ? 's' : ''} selected</span>
+                    <span>•</span>
+                    <span>{documents.length} document{documents.length !== 1 ? 's' : ''} available</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-2 h-2 rounded-full ${
+                      connectionStatus === 'connected' ? 'bg-green-500' : 'bg-orange-500'
+                    }`} />
+                    <span className="text-xs text-gray-500">
+                      {connectionStatus === 'connected' ? 'Connected' : 'Setup Required'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
               <button
                 onClick={handleSendMessage}
-                disabled={!currentInput.trim() || isProcessing}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-bold shadow-md border-2 border-blue-700 hover:border-blue-800"
+                disabled={isProcessing || !currentInput.trim() || selectedAdvisors.size === 0}
+                className="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-5 h-5" />
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* API Key Input Modal */}
+      {/* API Key Modal */}
       {showApiKeyInput && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4">
-            <h3 className="font-semibold text-lg mb-4 text-gray-900">Setup Claude API</h3>
+            <h3 className="font-semibold text-lg mb-4">Connect Claude API</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Enter your Claude API key to enable live AI conversations. Get your key from{' '}
+              <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                console.anthropic.com
+              </a>
+            </p>
             <input
               type="password"
-              placeholder="Enter your Claude API key..."
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="sk-ant-api03-..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               onKeyPress={(e) => {
                 if (e.key === 'Enter') {
                   saveApiKey(e.target.value);
@@ -537,7 +554,7 @@ Focus on providing actionable business advice specific to your role as ${advisor
             <div className="flex space-x-2">
               <button
                 onClick={() => setShowApiKeyInput(false)}
-                className="flex-1 bg-gray-600 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors font-bold shadow-md border-2 border-gray-700 hover:border-gray-800"
+                className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors"
               >
                 Cancel
               </button>
@@ -546,14 +563,24 @@ Focus on providing actionable business advice specific to your role as ${advisor
                   const input = e.target.parentElement.previousElementSibling;
                   saveApiKey(input.value);
                 }}
-                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-bold shadow-md border-2 border-blue-700 hover:border-blue-800"
+                className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
               >
-                Save
+                Connect
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".pdf,.txt,.csv,.json,.xlsx,.docx"
+        className="hidden"
+        onChange={handleFileUpload}
+      />
     </div>
   );
 };

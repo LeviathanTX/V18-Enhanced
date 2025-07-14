@@ -6,7 +6,7 @@ import {
   TrendingUp, Activity, Award, Briefcase, Network, Gauge, Eye,
   EyeOff, Maximize2, Minimize2, RotateCcw, Download, Share2,
   ChevronDown, ChevronRight, Search, Filter, MoreVertical,
-  ExternalLink, Copy, Edit3, Trash2, UserPlus, Mail, Phone
+  ExternalLink, Copy, Edit3, Trash2, UserPlus, Mail, Phone, Crown
 } from 'lucide-react';
 
 // Import all available modules
@@ -18,6 +18,7 @@ import AIBoardAdvancedAIFeaturesV22 from './modules/AIBoardAdvancedAIFeaturesV22
 import CustomAdvisorIntegrationV23 from './modules/CustomAdvisorIntegrationV23';
 import AIBoardV19LiveIntegration from './modules/AIBoardV19LiveIntegration';
 import AIBoardV18V25VideoPlatformIntegration from './modules/AIBoardV18V25VideoPlatformIntegration';
+import AIBoardV27SubscriptionModule from './modules/AIBoardV27SubscriptionModule';
 
 // ===== AI BOARD V18 ENHANCED - AUTO-LOAD ALL MODULES =====
 const AIBoardV18Enhanced = () => {
@@ -175,6 +176,22 @@ const AIBoardV18Enhanced = () => {
       autoLoad: true,
       features: ['Multi-Platform Support', 'Universal Integration', 'Video AI'],
       lastUpdated: '1 hour ago'
+    },
+    {
+      id: 'subscription-management-v27',
+      name: 'Subscription Management V27',
+      description: 'Complete subscription and billing management with Stripe integration',
+      version: '27.0.0',
+      type: 'core',
+      category: 'Business Operations',
+      icon: Crown,
+      color: 'purple',
+      status: 'installed',
+      component: AIBoardV27SubscriptionModule,
+      priority: 9,
+      autoLoad: true,
+      features: ['Stripe Integration', 'Subscription Plans', 'Usage Tracking'],
+      lastUpdated: 'Just now'
     }
   ];
 
