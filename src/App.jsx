@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 
 // ===== AI BOARD V18 ENHANCED - FIXED CORE SHELL WITH ADVISORY BOARD =====
-const AIBoardV18Enhanced = () => {
+function App() {
   // ===== CORE STATE =====
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeView, setActiveView] = useState('dashboard');
@@ -809,4 +809,4 @@ Respond as this advisor would, providing strategic business guidance. Be specifi
   );
 };
 
-export default AIBoardV18Enhanced;
+export default App;
