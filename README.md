@@ -271,6 +271,47 @@ This project uses a unique development methodology where:
 
 ---
 
+## 🔧 **Technical Architecture**
+
+### **System Requirements**
+- **Node.js**: 18+ for development
+- **React**: 18 with functional components
+- **Vite**: Build tool and dev server
+- **Tailwind CSS**: Utility-first styling
+- **Claude API**: AI advisor integration
+
+### **Quick Development Setup**
+```bash
+# Clone repository
+git clone https://github.com/LeviathanTX/AI-Bod-CO.git
+cd AI-Bod-CO
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+```
+
+### **Deployment Pipeline**
+- **Repository**: GitHub (LeviathanTX/AI-Bod-CO)
+- **Hosting**: Vercel with auto-deployment
+- **Live URL**: https://ai-bod-co.vercel.app
+- **Build**: Automatic on `git push origin main`
+
+### **Core Components**
+- **App.jsx**: V18 Enhanced Core Shell with Advisory Board
+- **modules/**: Specialized features (V20-V26)
+- **AI Integration**: Claude API via `window.claude.complete`
+- **State Management**: React hooks with persistent conversation memory
+
+*For detailed technical documentation, see SYSTEM-ARCHITECTURE.md*
+
+---
+
 ## 🤝 **Contact & Partnership**
 
 **Business Development**: Strategic partnerships and enterprise sales  
