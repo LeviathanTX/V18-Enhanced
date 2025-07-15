@@ -1,788 +1,812 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { 
-  Brain, MessageSquare, FileText, Users, Video, Target, 
-  Clock, Bell, Search, Command, Send, Upload, Calendar,
-  TrendingUp, Lightbulb, Zap, AlertCircle, CheckCircle,
-  ChevronDown, ChevronRight, Plus, Settings, Download,
-  Globe, Briefcase, DollarSign, BarChart3, PieChart,
-  Mic, MicOff, Share2, Eye, Filter, Star, ArrowRight,
-  Sparkles, Activity, Shield, Network, Database, Cpu,
-  X, UserPlus, Crown, Maximize2, Minimize2, Loader2,
-  Hash, Award, Bookmark, RefreshCw, Copy, Save, History
+  Users, Brain, FileText, MessageSquare, Video, Settings, Maximize2, Minimize2,
+  Loader2, CheckCircle, AlertCircle, Plus, Trash2, Upload, Download, Share2,
+  BarChart3, TrendingUp, Clock, Target, Star, Zap, Crown, Shield, Award,
+  UserPlus, Database, Network, Activity, Globe2, Mic, Camera, Phone,
+  ChevronUp, ChevronDown, Send, MoreHorizontal, Filter, Search, RefreshCw,
+  Briefcase, DollarSign, Lightbulb, Eye, PlayCircle, Pause, Volume2, VolumeX
 } from 'lucide-react';
 
-// Import your existing modules
-import AIBoardV20LiveClaude from './modules/AIBoardV20LiveClaude';
-import EnhancedDocumentIntelligence from './modules/EnhancedDocumentIntelligence';
-import EnhancedDocumentIntelligenceV24 from './modules/EnhancedDocumentIntelligenceV24';
-import AIBoardV26RealGoogleMeetIntegration from './modules/AIBoardV26RealGoogleMeetIntegration';
-import AIBoardAdvancedAIFeaturesV22 from './modules/AIBoardAdvancedAIFeaturesV22';
-import CustomAdvisorIntegrationV23 from './modules/CustomAdvisorIntegrationV23';
-import AIBoardV19LiveIntegration from './modules/AIBoardV19LiveIntegration';
-import AIBoardV18V25VideoPlatformIntegration from './modules/AIBoardV18V25VideoPlatformIntegration';
-import AIBoardV27SubscriptionModule from './modules/AIBoardV27SubscriptionModule';
-
-// ===== ENHANCED AI BOARD PLATFORM - PRODUCTION UX =====
-const EnhancedAIBoardPlatform = () => {
+// ===== AI BOARD V18 ENHANCED - FIXED CORE SHELL WITH ADVISORY BOARD =====
+const AIBoardV18Enhanced = () => {
   // ===== CORE STATE =====
-  const [currentUser] = useState({
-    id: 'exec-1',
-    name: 'Sarah Chen',
-    role: 'CEO',
-    company: 'TechCorp Inc.',
-    avatar: '👩‍💼',
-    subscription: 'professional',
-    credits: 750,
-    maxCredits: 1000
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [activeView, setActiveView] = useState('dashboard');
+  const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Advisory Board State
+  const [selectedAdvisors, setSelectedAdvisors] = useState(['ceo', 'cfo']);
+  const [meetingActive, setMeetingActive] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [currentInput, setCurrentInput] = useState('');
+  const [documents, setDocuments] = useState([]);
+  const [meetingTopic, setMeetingTopic] = useState('');
+  
+  // Module Integration State
+  const [installedModules, setInstalledModules] = useState(new Map());
+  const [moduleStatuses, setModuleStatuses] = useState(new Map());
+  const [integrationHealth, setIntegrationHealth] = useState('excellent');
+  
+  // Subscription & Business State
+  const [subscriptionTier, setSubscriptionTier] = useState('professional');
+  const [usageMetrics, setUsageMetrics] = useState({
+    meetingsThisMonth: 12,
+    documentsAnalyzed: 47,
+    insightsGenerated: 89,
+    timeValue: '$15,200'
   });
 
-  // ===== MODULE SYSTEM STATE =====
-  const [loadedModules, setLoadedModules] = useState(new Map());
-  const [moduleStates, setModuleStates] = useState(new Map());
-  const [activeModules, setActiveModules] = useState(new Set());
-  const [minimizedModules, setMinimizedModules] = useState(new Set());
-  const [systemHealth, setSystemHealth] = useState(100);
-
-  // ===== AI ORCHESTRATION STATE =====
-  const [aiSystemStatus, setAISystemStatus] = useState('optimal');
-  const [activeAdvisors, setActiveAdvisors] = useState(new Set(['alexandra-ceo', 'david-cfo']));
-  const [conversationContext, setConversationContext] = useState(new Map());
-  const [recentInsights, setRecentInsights] = useState([]);
-
-  // ===== UX ENHANCEMENT STATE =====
-  const [commandPalette, setCommandPalette] = useState({ open: false, query: '' });
-  const [notifications, setNotifications] = useState([]);
-  const [quickActions, setQuickActions] = useState(true);
-  const [contextPanel, setContextPanel] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
-
-  // ===== MODULE DEFINITIONS =====
-  const moduleDefinitions = [
+  // ===== AI ADVISORS CONFIGURATION =====
+  const availableAdvisors = [
     {
-      id: 'live-claude-v20',
-      name: 'Live AI Advisory',
-      icon: Brain,
+      id: 'ceo',
+      name: 'Strategic CEO',
+      title: 'Chief Executive Officer',
+      avatar: '👔',
       color: 'blue',
-      priority: 1,
-      status: 'active',
-      description: 'Real-time conversations with expert AI advisors',
-      subscription: 'starter',
-      stats: { conversations: 47, insights: 156, satisfaction: 4.8 },
-      component: AIBoardV20LiveClaude
+      expertise: 'Strategic Planning, Leadership, M&A, Vision',
+      personality: 'Visionary, decisive, big-picture focused',
+      status: 'online'
     },
     {
-      id: 'subscription-v27',
-      name: 'Subscription Management',
-      icon: Crown,
-      color: 'purple',
-      priority: 2,
-      status: 'active',
-      description: 'Professional billing and usage tracking',
-      subscription: 'all',
-      stats: { mrr: 15400, customers: 103, churn: 2.1 },
-      component: AIBoardV27SubscriptionModule
-    },
-    {
-      id: 'document-intelligence-v24',
-      name: 'Document Intelligence',
-      icon: FileText,
+      id: 'cfo',
+      name: 'Financial CFO',
+      title: 'Chief Financial Officer', 
+      avatar: '📊',
       color: 'green',
-      priority: 3,
-      status: 'active',
-      description: 'Advanced document analysis and insights',
-      subscription: 'professional',
-      stats: { processed: 2847, insights: 892, accuracy: 94.7 },
-      component: EnhancedDocumentIntelligenceV24
+      expertise: 'Financial Analysis, Budgeting, Risk Management, Funding',
+      personality: 'Analytical, detail-oriented, risk-aware',
+      status: 'online'
     },
     {
-      id: 'google-meet-v26',
-      name: 'Meeting AI Participants',
-      icon: Video,
-      color: 'red',
-      priority: 4,
-      status: 'beta',
-      description: 'Revolutionary AI advisors in video meetings',
-      subscription: 'professional',
-      stats: { meetings: 156, participants: 412, engagement: 87.3 },
-      component: AIBoardV26RealGoogleMeetIntegration
+      id: 'cto',
+      name: 'Technical CTO',
+      title: 'Chief Technology Officer',
+      avatar: '💻',
+      color: 'purple',
+      expertise: 'Technology Strategy, Architecture, Innovation, Security',
+      personality: 'Innovative, technical, forward-thinking',
+      status: 'online'
     },
     {
-      id: 'custom-advisors-v23',
-      name: 'Custom Advisor Creator',
-      icon: UserPlus,
-      color: 'indigo',
-      priority: 5,
-      status: 'active',
-      description: 'Create industry-specific AI advisors',
-      subscription: 'enterprise',
-      stats: { advisors: 23, training: 156, effectiveness: 91.2 },
-      component: CustomAdvisorIntegrationV23
+      id: 'marketing',
+      name: 'Marketing Director',
+      title: 'Chief Marketing Officer',
+      avatar: '🎯',
+      color: 'pink',
+      expertise: 'Brand Strategy, Customer Acquisition, Market Research',
+      personality: 'Creative, data-driven, customer-focused',
+      status: 'online'
     },
     {
-      id: 'advanced-ai-v22',
-      name: 'Advanced AI Features',
-      icon: Sparkles,
-      color: 'yellow',
-      priority: 6,
-      status: 'active',
-      description: 'Sophisticated multi-agent orchestration',
-      subscription: 'professional',
-      stats: { predictions: 1247, accuracy: 89.4, insights: 3456 },
-      component: AIBoardAdvancedAIFeaturesV22
+      id: 'legal',
+      name: 'Legal Counsel',
+      title: 'General Counsel',
+      avatar: '⚖️',
+      color: 'gray',
+      expertise: 'Corporate Law, Compliance, Risk Management, Contracts',
+      personality: 'Thorough, cautious, detail-oriented',
+      status: 'available'
     },
     {
-      id: 'business-intelligence',
-      name: 'Business Intelligence',
-      icon: BarChart3,
-      color: 'emerald',
-      priority: 7,
-      status: 'active',
-      description: 'Comprehensive business analytics and reporting',
-      subscription: 'professional',
-      stats: { reports: 89, kpis: 247, alerts: 23 },
-      component: null
-    },
-    {
-      id: 'api-integration',
-      name: 'API & Integrations',
-      icon: Network,
+      id: 'hr',
+      name: 'People Director',
+      title: 'Chief People Officer',
+      avatar: '👥',
       color: 'orange',
-      priority: 8,
-      status: 'enterprise',
-      description: 'External system integrations and API access',
-      subscription: 'enterprise',
-      stats: { integrations: 12, calls: 15600, uptime: 99.97 },
-      component: null
+      expertise: 'Talent Strategy, Culture, Leadership Development',
+      personality: 'Empathetic, strategic, people-focused',
+      status: 'available'
     }
   ];
 
-  // ===== MOCK DATA INITIALIZATION =====
+  // ===== MODULE DEFINITIONS =====
+  const coreModules = [
+    {
+      id: 'v20-live-advisory',
+      name: 'Live Advisory Sessions',
+      icon: MessageSquare,
+      status: 'active',
+      description: 'Real-time AI advisory conversations',
+      tier: 'starter'
+    },
+    {
+      id: 'v21-document-intelligence',
+      name: 'Document Intelligence',
+      icon: FileText,
+      status: 'active', 
+      description: 'Advanced document analysis & insights',
+      tier: 'professional'
+    },
+    {
+      id: 'v22-advanced-ai',
+      name: 'Advanced AI Features',
+      icon: Brain,
+      status: 'active',
+      description: 'Enhanced AI capabilities & memory',
+      tier: 'professional'
+    },
+    {
+      id: 'v23-custom-advisors',
+      name: 'Custom Advisors',
+      icon: UserPlus,
+      status: 'installed',
+      description: 'Create custom AI advisors',
+      tier: 'enterprise'
+    },
+    {
+      id: 'v24-business-intelligence',
+      name: 'Business Intelligence',
+      icon: BarChart3,
+      status: 'installed',
+      description: 'Advanced analytics & KPI tracking',
+      tier: 'professional'
+    },
+    {
+      id: 'v25-integration-hub',
+      name: 'Integration Hub',
+      icon: Network,
+      status: 'available',
+      description: 'Third-party platform integrations',
+      tier: 'enterprise'
+    },
+    {
+      id: 'v26-google-meet',
+      name: 'Google Meet Integration',
+      icon: Video,
+      status: 'available',
+      description: 'Live video advisory sessions',
+      tier: 'enterprise'
+    }
+  ];
+
+  // ===== INITIALIZATION =====
   useEffect(() => {
-    initializeProductionData();
-    simulateRealTimeUpdates();
+    initializeSampleData();
+    initializeModules();
   }, []);
 
-  const initializeProductionData = () => {
-    // Initialize notifications
-    setNotifications([
+  const initializeSampleData = () => {
+    const sampleMessages = [
       {
-        id: 'insight-1',
-        type: 'insight',
-        title: 'AI Advisor Recommendation',
-        message: 'Alexandra suggests reviewing Q4 expansion strategy based on market trends',
-        timestamp: new Date(Date.now() - 15 * 60 * 1000),
-        priority: 'high',
-        actionable: true
+        id: 'msg-1',
+        type: 'advisor',
+        advisorId: 'ceo',
+        content: 'Welcome to your AI Advisory Board session. I\'ve reviewed your Q4 financial reports and I\'m ready to discuss strategic planning for 2025.',
+        timestamp: new Date(Date.now() - 300000).toISOString()
       },
       {
-        id: 'meeting-1',
-        type: 'meeting',
-        title: 'AI Meeting Scheduled',
-        message: 'Google Meet with AI advisors starting in 30 minutes',
-        timestamp: new Date(Date.now() - 30 * 60 * 1000),
-        priority: 'medium',
-        actionable: true
-      },
-      {
-        id: 'document-1',
-        type: 'document',
-        title: 'Document Analysis Complete',
-        message: 'Financial model analysis revealed 3 optimization opportunities',
-        timestamp: new Date(Date.now() - 45 * 60 * 1000),
-        priority: 'medium',
-        actionable: false
+        id: 'msg-2', 
+        type: 'advisor',
+        advisorId: 'cfo',
+        content: 'I agree with the CEO. The 23% revenue growth is excellent, but I\'d like to discuss our cash flow optimization strategies and potential funding scenarios.',
+        timestamp: new Date(Date.now() - 240000).toISOString()
       }
-    ]);
-
-    // Initialize recent insights
-    setRecentInsights([
-      {
-        id: 'insight-ceo-1',
-        advisor: 'Alexandra Chen',
-        type: 'strategic',
-        content: 'Market expansion to Asia-Pacific should be prioritized based on competitor analysis',
-        confidence: 0.94,
-        impact: 'high',
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000)
-      },
-      {
-        id: 'insight-cfo-1',
-        advisor: 'David Rodriguez',
-        type: 'financial',
-        content: 'Current burn rate allows for 18-month runway with recommended optimizations',
-        confidence: 0.89,
-        impact: 'critical',
-        timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000)
-      },
-      {
-        id: 'insight-cto-1',
-        advisor: 'Marcus Johnson',
-        type: 'technical',
-        content: 'Infrastructure scaling needed by Q2 to support projected user growth',
-        confidence: 0.91,
-        impact: 'medium',
-        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000)
-      }
-    ]);
-
-    // Auto-load priority modules
-    const priorityModules = moduleDefinitions
-      .filter(mod => mod.priority <= 4)
-      .map(mod => mod.id);
+    ];
+    setMessages(sampleMessages);
     
-    setActiveModules(new Set(priorityModules));
+    const sampleDocs = [
+      {
+        id: 'doc-1',
+        name: 'Q4 2024 Financial Report.pdf',
+        type: 'application/pdf',
+        size: 2.4 * 1024 * 1024,
+        uploadedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        status: 'analyzed',
+        insights: 'Revenue growth 23% YoY, strong market position'
+      },
+      {
+        id: 'doc-2',
+        name: 'Market Analysis 2025.xlsx',
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        size: 1.8 * 1024 * 1024,
+        uploadedAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        status: 'analyzed',
+        insights: 'TAM expansion opportunity 40%, key growth vectors identified'
+      }
+    ];
+    setDocuments(sampleDocs);
   };
 
-  const simulateRealTimeUpdates = () => {
-    setInterval(() => {
-      setSystemHealth(prev => Math.max(85, Math.min(100, prev + (Math.random() - 0.5) * 2)));
-      
-      // Simulate AI processing
-      if (Math.random() < 0.1) {
-        setAISystemStatus(prev => {
-          const statuses = ['optimal', 'processing', 'learning'];
-          return statuses[Math.floor(Math.random() * statuses.length)];
-        });
-      }
-    }, 5000);
+  const initializeModules = () => {
+    const moduleMap = new Map();
+    const statusMap = new Map();
+    
+    coreModules.forEach(module => {
+      moduleMap.set(module.id, module);
+      statusMap.set(module.id, {
+        lastSync: new Date().toISOString(),
+        health: 'good',
+        performance: Math.floor(Math.random() * 20) + 80
+      });
+    });
+    
+    setInstalledModules(moduleMap);
+    setModuleStatuses(statusMap);
   };
 
-  // ===== MODULE MANAGEMENT =====
-  const toggleModule = useCallback((moduleId) => {
-    setActiveModules(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(moduleId)) {
-        newSet.delete(moduleId);
-      } else {
-        newSet.add(moduleId);
-      }
-      return newSet;
-    });
-  }, []);
-
-  const minimizeModule = useCallback((moduleId) => {
-    setMinimizedModules(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(moduleId)) {
-        newSet.delete(moduleId);
-      } else {
-        newSet.add(moduleId);
-      }
-      return newSet;
-    });
-  }, []);
-
-  // ===== COMMAND PALETTE =====
-  const commandRef = useRef(null);
-  const [commandSuggestions] = useState([
-    { id: 'start-advisory', label: 'Start Advisory Session', icon: Brain, module: 'live-claude-v20' },
-    { id: 'analyze-document', label: 'Analyze Document', icon: FileText, module: 'document-intelligence-v24' },
-    { id: 'schedule-meeting', label: 'Schedule AI Meeting', icon: Video, module: 'google-meet-v26' },
-    { id: 'create-advisor', label: 'Create Custom Advisor', icon: UserPlus, module: 'custom-advisors-v23' },
-    { id: 'view-insights', label: 'View AI Insights', icon: Lightbulb, module: 'advanced-ai-v22' },
-    { id: 'upgrade-subscription', label: 'Upgrade Subscription', icon: Crown, module: 'subscription-v27' }
-  ]);
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setCommandPalette(prev => ({ ...prev, open: !prev.open }));
-      }
+  // ===== AI ADVISORY FUNCTIONS =====
+  const handleSendMessage = async () => {
+    if (!currentInput.trim()) return;
+    
+    setIsProcessing(true);
+    const userMessage = {
+      id: `msg-${Date.now()}`,
+      type: 'user',
+      content: currentInput.trim(),
+      timestamp: new Date().toISOString()
     };
+    
+    setMessages(prev => [...prev, userMessage]);
+    const question = currentInput.trim();
+    setCurrentInput('');
+    
+    try {
+      // Simulate processing delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Generate responses from selected advisors
+      for (const advisorId of selectedAdvisors) {
+        const advisor = availableAdvisors.find(a => a.id === advisorId);
+        if (advisor) {
+          const response = await generateAdvisorResponse(advisor, question);
+          const advisorMessage = {
+            id: `msg-${Date.now()}-${advisorId}`,
+            type: 'advisor',
+            advisorId: advisorId,
+            content: response,
+            timestamp: new Date().toISOString()
+          };
+          
+          setMessages(prev => [...prev, advisorMessage]);
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    } catch (error) {
+      console.error('Message processing error:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  const generateAdvisorResponse = async (advisor, question) => {
+    try {
+      // Use Claude's completion API for realistic advisor responses
+      const prompt = `You are ${advisor.name}, a ${advisor.title} on an AI Board of Advisors. 
 
-  // ===== ENHANCED UX COMPONENTS =====
-  const EnhancedTopBar = () => (
-    <header className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-40">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-              <Brain className="w-5 h-5 text-white" />
-            </div>
+Your expertise: ${advisor.expertise}
+Your personality: ${advisor.personality}
+Documents available: ${documents.map(d => d.name).join(', ')}
+
+The user asked: "${question}"
+
+Respond as this advisor would, providing strategic business guidance. Be specific, actionable, and reference the uploaded documents when relevant. Keep your response to 2-3 sentences maximum.`;
+
+      const response = await window.claude.complete(prompt);
+      return response;
+    } catch (error) {
+      console.error('AI response error:', error);
+      return `As your ${advisor.title}, I understand your question about "${question}". Let me analyze this with our team and get back to you with strategic recommendations.`;
+    }
+  };
+
+  const startAdvisoryMeeting = () => {
+    setMeetingActive(true);
+    setMeetingTopic('Strategic Planning Session');
+    
+    // Add meeting start message
+    const startMessage = {
+      id: `msg-start-${Date.now()}`,
+      type: 'system',
+      content: `Advisory meeting started with ${selectedAdvisors.length} advisors. Topic: ${meetingTopic}`,
+      timestamp: new Date().toISOString()
+    };
+    setMessages(prev => [...prev, startMessage]);
+  };
+
+  const toggleAdvisor = (advisorId) => {
+    setSelectedAdvisors(prev => 
+      prev.includes(advisorId) 
+        ? prev.filter(id => id !== advisorId)
+        : [...prev, advisorId]
+    );
+  };
+
+  // ===== FILE HANDLING =====
+  const fileInputRef = useRef(null);
+
+  const handleFileUpload = async (event) => {
+    const files = Array.from(event.target.files);
+    if (files.length === 0) return;
+    
+    setIsProcessing(true);
+    
+    for (const file of files) {
+      const newDoc = {
+        id: `doc-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        uploadedAt: new Date(),
+        status: 'processing'
+      };
+      
+      setDocuments(prev => [...prev, newDoc]);
+      
+      // Simulate document processing
+      setTimeout(() => {
+        setDocuments(prev => 
+          prev.map(doc => 
+            doc.id === newDoc.id 
+              ? { ...doc, status: 'analyzed', insights: 'Document analysis complete - key insights extracted' }
+              : doc
+          )
+        );
+      }, 2000);
+    }
+    
+    setIsProcessing(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // ===== RENDER FUNCTIONS =====
+  const renderDashboard = () => (
+    <div className="space-y-6">
+      {/* Usage Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">AI Board of Advisors</h1>
-              <p className="text-sm text-gray-500">Executive Advisory Platform</p>
+              <p className="text-sm text-blue-600 font-medium">Meetings This Month</p>
+              <p className="text-2xl font-bold text-blue-900">{usageMetrics.meetingsThisMonth}</p>
             </div>
-          </div>
-          
-          {/* System Health Indicator */}
-          <div className="flex items-center space-x-2 px-3 py-1 bg-green-50 rounded-full">
-            <div className={`w-2 h-2 rounded-full ${
-              systemHealth > 95 ? 'bg-green-500' :
-              systemHealth > 85 ? 'bg-yellow-500' : 'bg-red-500'
-            }`} />
-            <span className="text-xs font-medium text-green-700">{Math.round(systemHealth)}% optimal</span>
+            <MessageSquare className="w-8 h-8 text-blue-500" />
           </div>
         </div>
-
-        <div className="flex items-center space-x-4">
-          {/* Command Palette Trigger */}
-          <button
-            onClick={() => setCommandPalette(prev => ({ ...prev, open: true }))}
-            className="flex items-center space-x-2 px-3 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            <Command className="w-4 h-4 text-gray-600" />
-            <span className="text-sm text-gray-600">⌘K</span>
-          </button>
-
-          {/* Quick Actions */}
-          <div className="flex items-center space-x-2">
-            <button className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-              <Upload className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
-              <Video className="w-5 h-5" />
-            </button>
-            <button className="p-2 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors relative">
-              <Bell className="w-5 h-5" />
-              {notifications.length > 0 && (
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full" />
-              )}
-            </button>
-          </div>
-
-          {/* User Profile */}
-          <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
-            <div className="text-right">
-              <div className="text-sm font-medium text-gray-900">{currentUser.name}</div>
-              <div className="text-xs text-gray-500">{currentUser.role} • {currentUser.subscription}</div>
-            </div>
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-              <span className="text-sm">{currentUser.avatar}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </header>
-  );
-
-  const CommandPalette = () => (
-    commandPalette.open && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center pt-20 z-50">
-        <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <Command className="w-5 h-5 text-gray-400" />
-              <input
-                ref={commandRef}
-                type="text"
-                placeholder="Search commands..."
-                className="flex-1 outline-none text-lg"
-                value={commandPalette.query}
-                onChange={(e) => setCommandPalette(prev => ({ ...prev, query: e.target.value }))}
-                autoFocus
-              />
-              <button
-                onClick={() => setCommandPalette(prev => ({ ...prev, open: false, query: '' }))}
-                className="p-1 hover:bg-gray-100 rounded"
-              >
-                <X className="w-4 h-4 text-gray-400" />
-              </button>
-            </div>
-          </div>
-          
-          <div className="max-h-96 overflow-y-auto">
-            {commandSuggestions
-              .filter(cmd => cmd.label.toLowerCase().includes(commandPalette.query.toLowerCase()))
-              .map(command => (
-              <button
-                key={command.id}
-                onClick={() => {
-                  toggleModule(command.module);
-                  setCommandPalette({ open: false, query: '' });
-                }}
-                className="w-full flex items-center space-x-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
-              >
-                <command.icon className="w-5 h-5 text-gray-400" />
-                <span className="text-sm font-medium text-gray-900">{command.label}</span>
-                <span className="text-xs text-gray-500 ml-auto">
-                  {activeModules.has(command.module) ? 'Active' : 'Activate'}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    )
-  );
-
-  const SmartInsightsPanel = () => (
-    contextPanel && (
-      <div className="w-80 bg-white border-l border-gray-200 flex flex-col">
-        <div className="p-4 border-b border-gray-200">
+        
+        <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
           <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900">AI Insights</h3>
-            <button
-              onClick={() => setContextPanel(false)}
-              className="p-1 hover:bg-gray-100 rounded"
-            >
-              <X className="w-4 h-4 text-gray-400" />
-            </button>
+            <div>
+              <p className="text-sm text-green-600 font-medium">Documents Analyzed</p>
+              <p className="text-2xl font-bold text-green-900">{usageMetrics.documentsAnalyzed}</p>
+            </div>
+            <FileText className="w-8 h-8 text-green-500" />
           </div>
         </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Recent Insights */}
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Recent Insights</h4>
-            <div className="space-y-3">
-              {recentInsights.map(insight => (
-                <div key={insight.id} className="p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs font-medium text-blue-600">{insight.advisor}</span>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      insight.impact === 'critical' ? 'bg-red-100 text-red-700' :
-                      insight.impact === 'high' ? 'bg-orange-100 text-orange-700' :
-                      'bg-blue-100 text-blue-700'
-                    }`}>
-                      {insight.impact}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-700">{insight.content}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-gray-500">
-                      {Math.round(insight.confidence * 100)}% confidence
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(insight.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                </div>
-              ))}
+        
+        <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-purple-600 font-medium">Insights Generated</p>
+              <p className="text-2xl font-bold text-purple-900">{usageMetrics.insightsGenerated}</p>
             </div>
+            <Lightbulb className="w-8 h-8 text-purple-500" />
           </div>
-
-          {/* AI System Status */}
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">AI System Status</h4>
-            <div className="p-3 bg-gray-50 rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">Processing Status</span>
-                <span className={`text-xs px-2 py-1 rounded-full ${
-                  aiSystemStatus === 'optimal' ? 'bg-green-100 text-green-700' :
-                  aiSystemStatus === 'processing' ? 'bg-blue-100 text-blue-700' :
-                  'bg-yellow-100 text-yellow-700'
-                }`}>
-                  {aiSystemStatus}
-                </span>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Active Advisors</span>
-                  <span className="font-medium">{activeAdvisors.size}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Credits Used</span>
-                  <span className="font-medium">{currentUser.credits}/{currentUser.maxCredits}</span>
-                </div>
-              </div>
+        </div>
+        
+        <div className="bg-gradient-to-r from-orange-50 to-orange-100 p-4 rounded-lg border border-orange-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-orange-600 font-medium">Time Value Saved</p>
+              <p className="text-2xl font-bold text-orange-900">{usageMetrics.timeValue}</p>
             </div>
-          </div>
-
-          {/* Quick Actions */}
-          <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Quick Actions</h4>
-            <div className="space-y-2">
-              <button className="w-full flex items-center space-x-2 p-2 text-left hover:bg-gray-50 rounded-lg transition-colors">
-                <Brain className="w-4 h-4 text-blue-500" />
-                <span className="text-sm">Start Advisory Session</span>
-              </button>
-              <button className="w-full flex items-center space-x-2 p-2 text-left hover:bg-gray-50 rounded-lg transition-colors">
-                <Upload className="w-4 h-4 text-green-500" />
-                <span className="text-sm">Upload Document</span>
-              </button>
-              <button className="w-full flex items-center space-x-2 p-2 text-left hover:bg-gray-50 rounded-lg transition-colors">
-                <Video className="w-4 h-4 text-red-500" />
-                <span className="text-sm">Schedule Meeting</span>
-              </button>
-            </div>
+            <Clock className="w-8 h-8 text-orange-500" />
           </div>
         </div>
       </div>
-    )
-  );
 
-  const ModuleCard = ({ module }) => {
-    const isActive = activeModules.has(module.id);
-    const isMinimized = minimizedModules.has(module.id);
-    const IconComponent = module.icon;
-
-    return (
-      <div className={`bg-white rounded-xl border-2 transition-all duration-300 ${
-        isActive ? 'border-blue-200 shadow-lg' : 'border-gray-200 hover:border-gray-300'
-      }`}>
-        {/* Module Header */}
-        <div className={`p-4 border-b border-gray-200 ${
-          module.color === 'blue' ? 'bg-blue-50' :
-          module.color === 'purple' ? 'bg-purple-50' :
-          module.color === 'green' ? 'bg-green-50' :
-          module.color === 'red' ? 'bg-red-50' :
-          module.color === 'indigo' ? 'bg-indigo-50' :
-          module.color === 'yellow' ? 'bg-yellow-50' :
-          module.color === 'emerald' ? 'bg-emerald-50' :
-          'bg-orange-50'
-        }`}>
+      {/* AI Advisory Board Quick Access */}
+      <div className="bg-white rounded-lg border-2 border-gray-300 shadow-lg">
+        <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                module.color === 'blue' ? 'bg-blue-600' :
-                module.color === 'purple' ? 'bg-purple-600' :
-                module.color === 'green' ? 'bg-green-600' :
-                module.color === 'red' ? 'bg-red-600' :
-                module.color === 'indigo' ? 'bg-indigo-600' :
-                module.color === 'yellow' ? 'bg-yellow-600' :
-                module.color === 'emerald' ? 'bg-emerald-600' :
-                'bg-orange-600'
-              }`}>
-                <IconComponent className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-gray-900">{module.name}</h3>
-                <p className="text-sm text-gray-600">{module.description}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                module.status === 'active' ? 'bg-green-100 text-green-700' :
-                module.status === 'beta' ? 'bg-blue-100 text-blue-700' :
-                'bg-purple-100 text-purple-700'
-              }`}>
-                {module.status}
-              </span>
-              
-              {isActive && (
-                <button
-                  onClick={() => minimizeModule(module.id)}
-                  className="p-1 hover:bg-white rounded transition-colors"
-                >
-                  {isMinimized ? <Maximize2 className="w-4 h-4" /> : <Minimize2 className="w-4 h-4" />}
-                </button>
-              )}
-              
-              <button
-                onClick={() => toggleModule(module.id)}
-                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                  isActive 
-                    ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                }`}
-              >
-                {isActive ? 'Deactivate' : 'Activate'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Module Content */}
-        {isActive && !isMinimized && (
-          <div className="p-6">
-            <div className="grid grid-cols-3 gap-4 mb-4">
-              {Object.entries(module.stats).map(([key, value]) => (
-                <div key={key} className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">
-                    {typeof value === 'number' && value > 1000 
-                      ? `${(value / 1000).toFixed(1)}k`
-                      : value
-                    }
-                  </div>
-                  <div className="text-xs text-gray-500 capitalize">
-                    {key.replace(/([A-Z])/g, ' $1').trim()}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="space-y-3">
-              <button 
-                onClick={() => {
-                  if (module.component) {
-                    // Open module in full screen
-                    setActiveModules(new Set([module.id]));
-                  }
-                }}
-                className="w-full flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <span className="text-sm font-medium">Open {module.name}</span>
-                <ArrowRight className="w-4 h-4 text-gray-400" />
-              </button>
-              
-              {module.id === 'live-claude-v20' && (
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Brain className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-900">AI Advisors Ready</span>
-                  </div>
-                  <p className="text-xs text-blue-700">
-                    4 expert advisors online and ready for strategic discussions
-                  </p>
-                </div>
-              )}
-              
-              {module.id === 'subscription-v27' && (
-                <div className="p-3 bg-purple-50 rounded-lg">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Crown className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm font-medium text-purple-900">Professional Plan</span>
-                  </div>
-                  <p className="text-xs text-purple-700">
-                    Full access to all AI advisors and premium features
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Minimized State */}
-        {isActive && isMinimized && (
-          <div className="p-3">
-            <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-sm text-gray-600">Running in background</span>
+                <Users className="w-6 h-6 text-blue-600" />
+                <Crown className="w-5 h-5 text-purple-500 animate-pulse" />
               </div>
-              <span className="text-xs text-gray-500">
-                {Object.values(module.stats)[0]} active
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // ===== RENDER FULL MODULE INTERFACE =====
-  const renderFullModuleInterface = () => {
-    if (activeModules.size !== 1) return null;
-    
-    const moduleId = Array.from(activeModules)[0];
-    const module = moduleDefinitions.find(m => m.id === moduleId);
-    
-    if (!module || !module.component) return null;
-    
-    const ModuleComponent = module.component;
-    
-    return (
-      <div className="fixed inset-0 bg-gray-50 z-40">
-        <div className="h-full flex flex-col">
-          {/* Module Header Bar */}
-          <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => setActiveModules(new Set(moduleDefinitions.slice(0, 4).map(m => m.id)))}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <ArrowRight className="w-5 h-5 rotate-180 text-gray-600" />
-              </button>
-              <module.icon className="w-6 h-6 text-gray-700" />
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">{module.name}</h2>
-                <p className="text-sm text-gray-500">{module.description}</p>
+                <h3 className="text-lg font-bold text-gray-900">AI Advisory Board</h3>
+                <p className="text-sm text-gray-600">Your strategic decision-making team</p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <span className={`text-xs px-3 py-1 rounded-full ${
-                module.status === 'active' ? 'bg-green-100 text-green-700' :
-                module.status === 'beta' ? 'bg-blue-100 text-blue-700' :
-                'bg-purple-100 text-purple-700'
-              }`}>
-                {module.status}
-              </span>
+            
+            <button
+              onClick={() => setActiveView('advisory')}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Start Advisory Session →
+            </button>
+          </div>
+        </div>
+        
+        <div className="p-6">
+          <div className="flex items-center space-x-4 mb-4">
+            <h4 className="font-semibold text-gray-800">Active Advisors:</h4>
+            <div className="flex space-x-2">
+              {selectedAdvisors.map(advisorId => {
+                const advisor = availableAdvisors.find(a => a.id === advisorId);
+                return (
+                  <div key={advisorId} className="flex items-center space-x-2 bg-gray-100 px-3 py-1 rounded-full">
+                    <span className="text-lg">{advisor?.avatar}</span>
+                    <span className="text-sm font-medium">{advisor?.name}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
           
-          {/* Module Content */}
-          <div className="flex-1 overflow-hidden">
-            <ModuleComponent />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <h5 className="font-medium text-gray-700">Recent Documents</h5>
+              {documents.slice(0, 3).map(doc => (
+                <div key={doc.id} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg">
+                  <FileText className="w-4 h-4 text-gray-500" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{doc.name}</p>
+                    <p className="text-xs text-gray-500">{doc.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            <div className="space-y-2">
+              <h5 className="font-medium text-gray-700">Quick Actions</h5>
+              <div className="space-y-2">
+                <button
+                  onClick={() => setActiveView('advisory')}
+                  className="w-full text-left p-2 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                >
+                  <span className="text-sm font-medium text-blue-700">📋 Strategic Planning Session</span>
+                </button>
+                <button
+                  onClick={() => setActiveView('advisory')}
+                  className="w-full text-left p-2 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                >
+                  <span className="text-sm font-medium text-green-700">💰 Financial Review</span>
+                </button>
+                <button
+                  onClick={() => setActiveView('advisory')}
+                  className="w-full text-left p-2 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+                >
+                  <span className="text-sm font-medium text-purple-700">🚀 Growth Strategy</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-    );
-  };
+
+      {/* Module Status Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {coreModules.map(module => {
+          const status = moduleStatuses.get(module.id);
+          const IconComponent = module.icon;
+          
+          return (
+            <div key={module.id} className="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <IconComponent className="w-5 h-5 text-blue-600" />
+                  <span className="font-medium text-gray-900">{module.name}</span>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  module.status === 'active' ? 'bg-green-100 text-green-800' :
+                  module.status === 'installed' ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-600'
+                }`}>
+                  {module.status}
+                </span>
+              </div>
+              
+              <p className="text-sm text-gray-600 mb-3">{module.description}</p>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">{module.tier}</span>
+                {status && (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full" />
+                    <span className="text-xs text-gray-600">{status.performance}%</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderAdvisoryBoard = () => (
+    <div className="space-y-6">
+      {/* Advisor Selection */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Select Your Advisory Team</h3>
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-600">{selectedAdvisors.length} selected</span>
+            <button
+              onClick={startAdvisoryMeeting}
+              disabled={selectedAdvisors.length === 0}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                selectedAdvisors.length > 0
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              {meetingActive ? 'Meeting Active' : 'Start Meeting'}
+            </button>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {availableAdvisors.map(advisor => (
+            <div
+              key={advisor.id}
+              onClick={() => toggleAdvisor(advisor.id)}
+              className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                selectedAdvisors.includes(advisor.id)
+                  ? `border-${advisor.color}-500 bg-${advisor.color}-50`
+                  : 'border-gray-200 hover:border-gray-300 bg-white'
+              }`}
+            >
+              <div className="flex items-center space-x-3 mb-3">
+                <span className="text-2xl">{advisor.avatar}</span>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900">{advisor.name}</h4>
+                  <p className="text-sm text-gray-600">{advisor.title}</p>
+                </div>
+                <div className={`w-3 h-3 rounded-full ${
+                  advisor.status === 'online' ? 'bg-green-500' : 'bg-yellow-500'
+                }`} />
+              </div>
+              
+              <p className="text-sm text-gray-700 mb-2">{advisor.expertise}</p>
+              <p className="text-xs text-gray-500">{advisor.personality}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Document Upload */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">Documents & Context</h3>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+          >
+            <Upload className="w-4 h-4" />
+            <span>Upload Documents</span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            onChange={handleFileUpload}
+            className="hidden"
+            accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls"
+          />
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {documents.map(doc => (
+            <div key={doc.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border">
+              <FileText className="w-5 h-5 text-blue-500" />
+              <div className="flex-1 min-w-0">
+                <p className="font-medium text-gray-900 truncate">{doc.name}</p>
+                <p className="text-sm text-gray-600">{(doc.size / 1024 / 1024).toFixed(1)} MB</p>
+                {doc.insights && (
+                  <p className="text-xs text-green-600 mt-1">{doc.insights}</p>
+                )}
+              </div>
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                doc.status === 'analyzed' ? 'bg-green-100 text-green-800' :
+                doc.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
+                'bg-gray-100 text-gray-800'
+              }`}>
+                {doc.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Advisory Chat Interface */}
+      <div className="bg-white rounded-lg border border-gray-200">
+        <div className="p-4 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Advisory Discussion</h3>
+            <div className="flex items-center space-x-2">
+              {meetingActive && (
+                <span className="flex items-center space-x-2 text-green-600">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-sm font-medium">Live Session</span>
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        <div className="h-96 overflow-y-auto p-4 space-y-4">
+          {messages.map(message => {
+            if (message.type === 'system') {
+              return (
+                <div key={message.id} className="text-center">
+                  <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                    {message.content}
+                  </span>
+                </div>
+              );
+            }
+            
+            if (message.type === 'user') {
+              return (
+                <div key={message.id} className="flex justify-end">
+                  <div className="bg-blue-600 text-white p-3 rounded-lg max-w-xs lg:max-w-md">
+                    <p className="text-sm">{message.content}</p>
+                    <p className="text-xs opacity-75 mt-1">
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+            
+            const advisor = availableAdvisors.find(a => a.id === message.advisorId);
+            return (
+              <div key={message.id} className="flex items-start space-x-3">
+                <span className="text-xl">{advisor?.avatar}</span>
+                <div className="flex-1">
+                  <div className="bg-gray-100 p-3 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="font-semibold text-sm text-gray-900">{advisor?.name}</span>
+                      <span className="text-xs text-gray-500">{advisor?.title}</span>
+                    </div>
+                    <p className="text-sm text-gray-800">{message.content}</p>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+          
+          {isProcessing && (
+            <div className="flex items-center space-x-2 text-gray-500">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span className="text-sm">Advisors are responding...</span>
+            </div>
+          )}
+        </div>
+        
+        <div className="p-4 border-t border-gray-200">
+          <div className="flex space-x-3">
+            <input
+              type="text"
+              value={currentInput}
+              onChange={(e) => setCurrentInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              placeholder="Ask your advisory board anything..."
+              className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              disabled={isProcessing}
+            />
+            <button
+              onClick={handleSendMessage}
+              disabled={!currentInput.trim() || isProcessing}
+              className={`px-4 py-3 rounded-lg transition-colors ${
+                currentInput.trim() && !isProcessing
+                  ? 'bg-blue-600 text-white hover:bg-blue-700'
+                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }`}
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   // ===== MAIN RENDER =====
   return (
-    <div className="min-h-screen bg-gray-50">
-      <EnhancedTopBar />
-      <CommandPalette />
-      
-      {/* Check if single module is active in full screen */}
-      {activeModules.size === 1 && renderFullModuleInterface()}
-      
-      {/* Normal dashboard view */}
-      {activeModules.size !== 1 && (
-        <div className="flex">
-          {/* Main Content */}
-          <div className="flex-1 p-6">
-            {/* Hero Section */}
-            <div className="mb-8">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-3xl font-bold mb-2">Welcome back, {currentUser.name}</h2>
-                    <p className="text-blue-100 mb-4">Your AI advisory board is ready to help drive strategic decisions</p>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-2">
-                        <Users className="w-5 h-5" />
-                        <span>{activeAdvisors.size} advisors online</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Activity className="w-5 h-5" />
-                        <span>{activeModules.size} modules active</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Zap className="w-5 h-5" />
-                        <span>{Math.round(systemHealth)}% performance</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-6xl opacity-20">🚀</div>
-                </div>
-              </div>
+    <div className={`bg-gray-50 min-h-screen transition-all duration-300 ${
+      isExpanded ? 'p-2' : 'p-4'
+    }`}>
+      <div className={`bg-white rounded-lg shadow-lg transition-all duration-300 ${
+        isExpanded ? 'h-[calc(100vh-1rem)]' : 'min-h-[600px]'
+      }`}>
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Crown className="w-8 h-8 text-yellow-300" />
+              <Shield className="w-6 h-6 text-blue-200" />
             </div>
-
-            {/* Module Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {moduleDefinitions.map(module => (
-                <ModuleCard key={module.id} module={module} />
-              ))}
+            <div>
+              <h1 className="text-2xl font-bold">AI Board of Advisors</h1>
+              <p className="text-blue-100">V18 Enhanced - Executive Intelligence Platform</p>
             </div>
-
-            {/* Demo Mode Toggle */}
-            <div className="mt-8 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-medium text-yellow-900">Demo Mode</h4>
-                  <p className="text-sm text-yellow-700">
-                    Experience the platform with sample data and simulated AI responses
-                  </p>
-                </div>
-                <button
-                  onClick={() => setIsDemoMode(!isDemoMode)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    isDemoMode 
-                      ? 'bg-yellow-200 text-yellow-900' 
-                      : 'bg-white text-yellow-700 border border-yellow-300'
-                  }`}
-                >
-                  {isDemoMode ? 'Exit Demo' : 'Try Demo'}
-                </button>
-              </div>
+            <div className="flex space-x-2">
+              <span className="px-3 py-1 bg-yellow-500 text-yellow-900 text-xs font-bold rounded-full">
+                {subscriptionTier.toUpperCase()}
+              </span>
+              <span className="px-3 py-1 bg-green-500 text-green-900 text-xs font-bold rounded-full">
+                {integrationHealth.toUpperCase()}
+              </span>
             </div>
           </div>
-
-          {/* Smart Insights Panel */}
-          <SmartInsightsPanel />
+          
+          <div className="flex items-center space-x-3">
+            {/* Navigation */}
+            <div className="flex space-x-2 bg-white/10 rounded-lg p-1">
+              <button
+                onClick={() => setActiveView('dashboard')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeView === 'dashboard' 
+                    ? 'bg-white text-blue-600' 
+                    : 'text-white hover:bg-white/20'
+                }`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => setActiveView('advisory')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeView === 'advisory' 
+                    ? 'bg-white text-blue-600' 
+                    : 'text-white hover:bg-white/20'
+                }`}
+              >
+                Advisory Board
+              </button>
+            </div>
+            
+            {/* Expand/Minimize */}
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex items-center space-x-2 px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors"
+              aria-label={isExpanded ? "Minimize platform" : "Expand platform"}
+            >
+              {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+              <span className="text-sm font-medium">
+                {isExpanded ? 'Exit Fullscreen' : 'Fullscreen'}
+              </span>
+            </button>
+          </div>
         </div>
-      )}
+
+        {/* Main Content */}
+        <div className={`${isExpanded ? 'h-[calc(100vh-8rem)]' : 'h-auto'} overflow-y-auto`}>
+          <div className="p-6">
+            {activeView === 'dashboard' && renderDashboard()}
+            {activeView === 'advisory' && renderAdvisoryBoard()}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 rounded-b-lg">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center space-x-4">
+              <span>V18 Enhanced Core Shell</span>
+              <span>•</span>
+              <span>{coreModules.filter(m => m.status === 'active').length} Active Modules</span>
+              <span>•</span>
+              <span>Last Sync: {new Date().toLocaleTimeString()}</span>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full" />
+              <span>All Systems Operational</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default EnhancedAIBoardPlatform;// Build Mon Jul 14 13:03:13 CDT 2025
+export default AIBoardV18Enhanced;

@@ -7,7 +7,7 @@ import {
   Loader2, Plus, Monitor, Camera, Volume2, VolumeX,
   Grid3X3, User, UserCheck, Zap, Star, Archive,
   RefreshCw, Bell, Send, ChevronUp, ChevronDown,
-  PresentationChart, FileImage, Upload, Eye, Hash
+  PieChart, FileImage, Upload, Eye, Hash
 } from 'lucide-react';
 
 // ===== AI BOARD V18-V25 - VIDEO PLATFORM INTEGRATION MODULE =====
@@ -427,7 +427,7 @@ const AIBoardV18V25VideoPlatformModule = () => {
               isRecording ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700 hover:bg-gray-600'
             }`}
           >
-            <Record className="w-4 h-4" />
+            <Circle className="w-4 h-4" />
           </button>
           
           <button
