@@ -807,6 +807,6 @@ Respond as this advisor would, providing strategic business guidance. Be specifi
       </div>
     </div>
   );
-};
+}
 
-export default App;
+export default App;/* V18 Enhanced - Force Rebuild Mon Jul 14 22:43:41 CDT 2025 */
