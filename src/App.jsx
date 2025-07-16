@@ -9,11 +9,12 @@ import {
   ExternalLink, Copy, Edit3, Trash2, UserPlus, Mail, Phone, Crown,
   Command, Home, MessageSquare, Calendar, Archive, BookOpen,
   Sparkles, Monitor, Workflow, LineChart, PieChart, Globe, ChevronLeft,
-  Send, Upload, Loader2, DollarSign, Play, Pause, Lightbulb
+  Send, Upload, Loader2, DollarSign, Play, Pause, Lightbulb,
+  GitBranch
 } from 'lucide-react';
 
 // ===== AI BOARD V20 LIVE CLAUDE MODULE =====
-const AIBoardV20LiveClaude = ({ isExpanded, crossModuleContext, onContextUpdate }) => {
+const AIBoardV20LiveClaude = ({ isExpanded, crossModuleContext, onContextUpdate, globalDocuments, setGlobalDocuments }) => {
   // ===== MODULE STATE =====
   const [messages, setMessages] = useState([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -69,15 +70,14 @@ const AIBoardV20LiveClaude = ({ isExpanded, crossModuleContext, onContextUpdate 
     }
   };
 
-  // ===== USE SHARED CONTEXT =====
+  // ===== USE SHARED DOCUMENTS =====
   useEffect(() => {
-    // Check for documents from V24
-    const sharedDocs = crossModuleContext.get('v24_documents');
-    if (sharedDocs && sharedDocs.length > 0) {
+    // Check for documents from global state
+    if (globalDocuments && globalDocuments.length > 0) {
       // Auto-start meeting if documents are loaded
       setMeetingActive(true);
     }
-  }, [crossModuleContext]);
+  }, [globalDocuments]);
 
   // ===== AI RESPONSE GENERATION =====
   const generateAdvisorResponse = async (advisor, question, documents = []) => {
@@ -86,16 +86,27 @@ const AIBoardV20LiveClaude = ({ isExpanded, crossModuleContext, onContextUpdate 
     }
 
     try {
-      // Include document context if available
-      const docContext = documents.length > 0 
-        ? `\n\nAvailable documents: ${documents.map(d => d.name).join(', ')}`
-        : '';
+      // Include document content if available
+      let docContext = '';
+      if (documents.length > 0) {
+        docContext = '\n\nAvailable documents and their content:\n';
+        documents.forEach(doc => {
+          docContext += `\nDocument: ${doc.name}\n`;
+          if (doc.extractedText && doc.extractedText.length > 0) {
+            // Include actual content for text files
+            docContext += `Content: ${doc.extractedText.substring(0, 1000)}...\n`;
+          } else {
+            // Note limitation for other file types
+            docContext += `Content: ${doc.content}\n`;
+          }
+        });
+      }
 
       const prompt = `${advisor.systemPrompt}
 
 User Question: "${question}"${docContext}
 
-Provide strategic advice as ${advisor.name}.`;
+Provide strategic advice as ${advisor.name}. If documents are mentioned, reference their actual content in your response.`;
 
       const response = await window.claude.complete(prompt);
       return response;
@@ -120,8 +131,8 @@ Provide strategic advice as ${advisor.name}.`;
     setCurrentInput('');
     setIsProcessing(true);
 
-    // Get documents from context
-    const documents = crossModuleContext.get('v24_documents') || [];
+    // Get documents from global state
+    const documents = globalDocuments || [];
 
     // Generate responses from selected advisors
     const advisorResponses = await Promise.all(
@@ -160,13 +171,13 @@ Provide strategic advice as ${advisor.name}.`;
   };
 
   // ===== FILE HANDLING =====
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      // Forward to V24 Document Intelligence
+      // Pass files to Document Intelligence module via context
       onContextUpdate(prev => {
         const newContext = new Map(prev);
-        newContext.set('v20_uploaded_files', Array.from(files));
+        newContext.set('files_to_process', Array.from(files));
         return newContext;
       });
     }
@@ -238,6 +249,30 @@ Provide strategic advice as ${advisor.name}.`;
             ))}
           </div>
         </div>
+
+        {/* Document Status */}
+        {globalDocuments && globalDocuments.length > 0 && (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-green-700">
+                  {globalDocuments.length} document{globalDocuments.length > 1 ? 's' : ''} available for analysis
+                </span>
+              </div>
+              <button
+                onClick={() => onContextUpdate(prev => {
+                  const newContext = new Map(prev);
+                  newContext.set('navigate_to', 'intelligence-center');
+                  return newContext;
+                })}
+                className="text-xs text-green-600 hover:text-green-800 underline"
+              >
+                View documents
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Messages Area */}
@@ -325,52 +360,285 @@ Provide strategic advice as ${advisor.name}.`;
 };
 
 // ===== ENHANCED DOCUMENT INTELLIGENCE V24 MODULE =====
-const EnhancedDocumentIntelligenceV24 = ({ isExpanded, crossModuleContext, onContextUpdate }) => {
-  const [documents, setDocuments] = useState([]);
+const EnhancedDocumentIntelligenceV24 = ({ isExpanded, crossModuleContext, onContextUpdate, globalDocuments, setGlobalDocuments }) => {
   const [processingDoc, setProcessingDoc] = useState(null);
-  const [insights, setInsights] = useState([]);
+  const [processingStatus, setProcessingStatus] = useState('');
   const fileInputRef = useRef(null);
 
-  // Document processing
+  // Check for files from other modules
+  useEffect(() => {
+    const filesToProcess = crossModuleContext.get('files_to_process');
+    if (filesToProcess && filesToProcess.length > 0) {
+      // Process files from other modules
+      processFiles(filesToProcess);
+      
+      // Clear the context
+      onContextUpdate(prev => {
+        const newContext = new Map(prev);
+        newContext.delete('files_to_process');
+        return newContext;
+      });
+    }
+  }, [crossModuleContext]);
+
+  // Process files with content reading
+  const processFiles = async (files) => {
+    for (const file of files) {
+      await processDocument(file);
+    }
+  };
+
+  // Document processing with content extraction
   const processDocument = async (file) => {
     setProcessingDoc(file.name);
+    setProcessingStatus('Reading file...');
     
-    // Simulate document processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      let content = '';
+      let extractedText = '';
+      let documentData = {};
+      
+      // Read file content based on type
+      if (file.type === 'text/plain' || file.name.endsWith('.txt')) {
+        setProcessingStatus('Extracting text content...');
+        content = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+        extractedText = content;
+        documentData = { type: 'text', wordCount: content.split(/\s+/).length };
+        
+      } else if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+        setProcessingStatus('Parsing CSV data...');
+        const csvText = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+        
+        // Parse CSV using simple parser (in real app, use Papa Parse)
+        const lines = csvText.split('\n');
+        const headers = lines[0]?.split(',').map(h => h.trim());
+        const rows = lines.slice(1).filter(line => line.trim());
+        
+        extractedText = `CSV with ${headers?.length || 0} columns and ${rows.length} rows. Headers: ${headers?.join(', ')}`;
+        content = csvText;
+        documentData = { 
+          type: 'csv', 
+          headers, 
+          rowCount: rows.length,
+          preview: rows.slice(0, 3).join('\n')
+        };
+        
+      } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        setProcessingStatus('Extracting PDF content...');
+        
+        // In a real implementation, we'd use pdf.js here
+        // For artifact environment, we'll simulate PDF extraction
+        const arrayBuffer = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsArrayBuffer(file);
+        });
+        
+        // Simulated PDF content (in production, use pdf.js)
+        extractedText = `[PDF Content - ${file.name}]\n\nThis is a simulation of PDF content extraction. In a production environment, this would contain the actual text extracted from the PDF using pdf.js library.\n\nThe PDF appears to contain information about business strategy, market analysis, and financial projections. Key sections would be extracted and analyzed here.`;
+        
+        documentData = { 
+          type: 'pdf',
+          pageCount: 10, // simulated
+          hasImages: true,
+          hasCharts: true
+        };
+        
+      } else if (file.type.includes('word') || file.name.match(/\.(doc|docx)$/)) {
+        setProcessingStatus('Extracting Word document content...');
+        
+        // In real implementation, we'd use mammoth.js
+        const arrayBuffer = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsArrayBuffer(file);
+        });
+        
+        // Simulated Word content
+        extractedText = `[Word Document - ${file.name}]\n\nThis is a simulation of Word document content extraction. In production, mammoth.js would extract formatted text, preserving structure like headings, lists, and paragraphs.\n\nThe document would contain your business content with proper formatting preserved.`;
+        
+        documentData = { 
+          type: 'word',
+          hasFormatting: true,
+          hasTables: true,
+          hasImages: false
+        };
+        
+      } else if (file.type.includes('sheet') || file.type.includes('excel') || file.name.match(/\.(xls|xlsx)$/)) {
+        setProcessingStatus('Parsing Excel spreadsheet...');
+        
+        // In real implementation, we'd use SheetJS (xlsx)
+        const arrayBuffer = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsArrayBuffer(file);
+        });
+        
+        // Simulated Excel content
+        extractedText = `[Excel Spreadsheet - ${file.name}]\n\nThis is a simulation of Excel content extraction. In production, SheetJS would extract:\n- Multiple worksheets\n- Cell values and formulas\n- Charts and pivot tables\n\nExample data: Financial projections, KPIs, budget analysis`;
+        
+        documentData = { 
+          type: 'excel',
+          sheetCount: 3,
+          hasFormulas: true,
+          hasCharts: true,
+          sheets: ['Summary', 'Financial Data', 'Projections']
+        };
+        
+      } else {
+        content = `[${file.type} Document]`;
+        extractedText = `File type ${file.type} uploaded but content extraction not implemented.`;
+        documentData = { type: 'unknown' };
+      }
+      
+      setProcessingStatus('Generating AI insights...');
+      
+      // Simulate AI analysis delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Generate insights based on content
+      const insights = generateDocumentInsights(file.name, extractedText, documentData);
+      
+      const newDoc = {
+        id: Date.now(),
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        content: content, // Original content
+        extractedText: extractedText, // Extracted text for AI
+        documentData: documentData, // Structured data
+        uploadDate: new Date().toISOString(),
+        status: 'processed',
+        insights: insights
+      };
+
+      // Update global documents
+      setGlobalDocuments(prev => [...prev, newDoc]);
+      setProcessingDoc(null);
+      setProcessingStatus('');
+      
+      // Notify other modules about new document
+      onContextUpdate(prev => {
+        const newContext = new Map(prev);
+        newContext.set('new_document_processed', {
+          id: newDoc.id,
+          name: newDoc.name,
+          hasContent: extractedText.length > 100
+        });
+        return newContext;
+      });
+      
+    } catch (error) {
+      console.error('Error processing document:', error);
+      setProcessingDoc(null);
+      setProcessingStatus('');
+      
+      // Still add the document but mark as error
+      const errorDoc = {
+        id: Date.now(),
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        content: '[Error reading file]',
+        extractedText: '',
+        uploadDate: new Date().toISOString(),
+        status: 'error',
+        insights: [{ type: 'error', content: `Error processing file: ${error.message}` }]
+      };
+      
+      setGlobalDocuments(prev => [...prev, errorDoc]);
+    }
+  };
+
+  // Generate document insights based on content
+  const generateDocumentInsights = (fileName, content, docData) => {
+    const insights = [];
     
-    const newDoc = {
-      id: Date.now(),
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      uploadDate: new Date().toISOString(),
-      status: 'processed',
-      insights: [
-        { type: 'summary', content: `Key insights from ${file.name}` },
-        { type: 'risk', content: 'Identified 3 potential risks' },
-        { type: 'opportunity', content: 'Found 5 growth opportunities' }
-      ]
-    };
-
-    setDocuments(prev => [...prev, newDoc]);
-    setProcessingDoc(null);
-
-    // Share with other modules
-    onContextUpdate(prev => {
-      const newContext = new Map(prev);
-      const existingDocs = newContext.get('v24_documents') || [];
-      newContext.set('v24_documents', [...existingDocs, newDoc]);
-      return newContext;
+    // Basic insights
+    insights.push({
+      type: 'overview',
+      icon: 'FileText',
+      content: `Document type: ${docData.type?.toUpperCase() || 'Unknown'}, Size: ${content.length} characters`
     });
+    
+    // Content-based insights
+    if (content.length > 100) {
+      // Word frequency analysis
+      const words = content.toLowerCase().split(/\s+/);
+      const wordCount = words.length;
+      
+      insights.push({
+        type: 'statistics',
+        icon: 'BarChart3',
+        content: `Contains approximately ${wordCount} words`
+      });
+      
+      // Look for key business terms
+      const businessTerms = ['revenue', 'growth', 'market', 'strategy', 'customer', 'profit', 'cost', 'risk', 'opportunity'];
+      const foundTerms = businessTerms.filter(term => 
+        content.toLowerCase().includes(term)
+      );
+      
+      if (foundTerms.length > 0) {
+        insights.push({
+          type: 'keywords',
+          icon: 'Target',
+          content: `Key topics detected: ${foundTerms.join(', ')}`
+        });
+      }
+      
+      // Document-specific insights
+      if (docData.type === 'excel' || docData.type === 'csv') {
+        insights.push({
+          type: 'data',
+          icon: 'Database',
+          content: 'Contains structured data suitable for analysis and visualization'
+        });
+      }
+      
+      if (docData.type === 'pdf' || docData.type === 'word') {
+        insights.push({
+          type: 'document',
+          icon: 'FileText',
+          content: 'Business document ready for strategic analysis'
+        });
+      }
+    }
+    
+    // Add preview
+    if (content && content.length > 0) {
+      insights.push({
+        type: 'preview',
+        icon: 'Eye',
+        content: content.substring(0, 150) + '...'
+      });
+    }
+    
+    return insights;
   };
 
   const handleFileUpload = async (event) => {
     const files = event.target.files;
     if (files) {
-      for (const file of files) {
-        await processDocument(file);
-      }
+      await processFiles(Array.from(files));
     }
+  };
+
+  const removeDocument = (docId) => {
+    setGlobalDocuments(prev => prev.filter(doc => doc.id !== docId));
   };
 
   return (
@@ -404,15 +672,20 @@ const EnhancedDocumentIntelligenceV24 = ({ isExpanded, crossModuleContext, onCon
 
       {/* Processing Status */}
       {processingDoc && (
-        <div className="mb-4 p-4 bg-blue-50 rounded-lg flex items-center space-x-3">
-          <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-          <span className="text-blue-700">Processing {processingDoc}...</span>
+        <div className="mb-4 p-4 bg-blue-50 rounded-lg">
+          <div className="flex items-center space-x-3 mb-2">
+            <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+            <span className="text-blue-700 font-medium">Processing {processingDoc}</span>
+          </div>
+          {processingStatus && (
+            <p className="text-sm text-blue-600 ml-8">{processingStatus}</p>
+          )}
         </div>
       )}
 
       {/* Documents List */}
       <div className="space-y-3">
-        {documents.map(doc => (
+        {globalDocuments.map(doc => (
           <div key={doc.id} className="p-4 bg-white border border-gray-200 rounded-lg">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-3">
@@ -424,17 +697,44 @@ const EnhancedDocumentIntelligenceV24 = ({ isExpanded, crossModuleContext, onCon
                   </p>
                 </div>
               </div>
-              <CheckCircle className="w-5 h-5 text-green-500" />
+              <div className="flex items-center space-x-2">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                <button
+                  onClick={() => removeDocument(doc.id)}
+                  className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                  title="Remove document"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             
             {/* Document Insights */}
             <div className="space-y-2">
-              {doc.insights.map((insight, idx) => (
-                <div key={idx} className="flex items-start space-x-2 text-sm">
-                  <Lightbulb className="w-4 h-4 text-yellow-500 mt-0.5" />
-                  <span className="text-gray-700">{insight.content}</span>
-                </div>
-              ))}
+              {doc.insights.map((insight, idx) => {
+                // Map insight types to icons
+                const iconMap = {
+                  'overview': FileText,
+                  'statistics': BarChart3,
+                  'keywords': Target,
+                  'data': Database,
+                  'document': FileText,
+                  'preview': Eye,
+                  'error': AlertCircle,
+                  'summary': Lightbulb,
+                  'risk': Shield,
+                  'opportunity': TrendingUp
+                };
+                
+                const Icon = iconMap[insight.type] || Lightbulb;
+                
+                return (
+                  <div key={idx} className="flex items-start space-x-2 text-sm">
+                    <Icon className="w-4 h-4 text-gray-500 mt-0.5" />
+                    <span className="text-gray-700">{insight.content}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -455,15 +755,385 @@ const EnhancedDocumentIntelligenceV24 = ({ isExpanded, crossModuleContext, onCon
 };
 
 // ===== PLACEHOLDER MODULES =====
-const AIBoardAdvancedAIFeaturesV22 = ({ isExpanded }) => (
-  <div className="p-6">
-    <h4 className="font-semibold text-gray-900 mb-4">Advanced AI Features V22</h4>
-    <p className="text-gray-600 mb-4">Enhanced AI capabilities with memory and context awareness</p>
-    <div className="bg-green-50 rounded-lg p-4">
-      <p className="text-sm text-green-700">Module ready - Advanced features coming soon</p>
+const AIBoardAdvancedAIFeaturesV22 = ({ isExpanded, crossModuleContext, onContextUpdate, globalDocuments }) => {
+  const [activeTab, setActiveTab] = useState('inter-advisor');
+  const [interAdvisorMode, setInterAdvisorMode] = useState(false);
+  const [currentDebate, setCurrentDebate] = useState(null);
+  const [debateHistory, setDebateHistory] = useState([]);
+  const [conversationMemory, setConversationMemory] = useState(new Map());
+  const [memoryStats, setMemoryStats] = useState({
+    totalEntries: 0,
+    strategicDecisions: 0,
+    businessInsights: 0,
+    actionItems: 0
+  });
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Enhanced advisors with debate capabilities
+  const enhancedAdvisors = {
+    'ceo-advisor': {
+      name: 'Alexandra Chen',
+      role: 'CEO & Strategic Visionary',
+      avatar: '👩‍💼',
+      debateStyle: 'strategic-challenger',
+      focus: 'long-term value creation and market opportunities'
+    },
+    'cfo-advisor': {
+      name: 'Marcus Thompson', 
+      role: 'CFO & Financial Intelligence',
+      avatar: '💰',
+      debateStyle: 'analytical-skeptic',
+      focus: 'financial implications and risk assessment'
+    },
+    'cto-advisor': {
+      name: 'Dr. Aisha Patel',
+      role: 'CTO & Technology Strategist',
+      avatar: '⚡',
+      debateStyle: 'technical-realist',
+      focus: 'technical feasibility and scalability'
+    },
+    'cmo-advisor': {
+      name: 'Sarah Williams',
+      role: 'CMO & Growth Intelligence',
+      avatar: '📈',
+      debateStyle: 'customer-advocate',
+      focus: 'market dynamics and customer needs'
+    }
+  };
+
+  // Initialize with sample data
+  useEffect(() => {
+    // Sample memory entries
+    const sampleMemory = new Map([
+      ['decision-001', {
+        type: 'strategic-decision',
+        content: 'Decided to expand into European market Q2 2025',
+        context: 'Based on document analysis showing 40% market opportunity',
+        participants: ['ceo-advisor', 'cfo-advisor'],
+        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+        importance: 9,
+        documentRefs: globalDocuments.map(d => d.id).slice(0, 2)
+      }]
+    ]);
+    
+    setConversationMemory(sampleMemory);
+    updateMemoryStats(sampleMemory);
+  }, [globalDocuments]);
+
+  // Memory management
+  const updateMemoryStats = (memory) => {
+    const entries = Array.from(memory.values());
+    setMemoryStats({
+      totalEntries: entries.length,
+      strategicDecisions: entries.filter(e => e.type === 'strategic-decision').length,
+      businessInsights: entries.filter(e => e.type === 'business-insight').length,
+      actionItems: entries.reduce((acc, e) => acc + (e.outcomes?.length || 0), 0)
+    });
+  };
+
+  // Inter-advisor debate
+  const startInterAdvisorDebate = async (topic, participants) => {
+    setIsProcessing(true);
+    
+    try {
+      // Get relevant documents
+      const relevantDocs = globalDocuments.filter(doc => 
+        doc.extractedText && doc.extractedText.toLowerCase().includes(topic.toLowerCase())
+      );
+
+      // Build debate prompt with document context
+      const docContext = relevantDocs.length > 0 
+        ? `\n\nRelevant documents:\n${relevantDocs.map(d => 
+            `- ${d.name}: ${d.extractedText.substring(0, 300)}...`
+          ).join('\n')}`
+        : '';
+
+      const advisorDetails = participants.map(id => enhancedAdvisors[id]);
+      
+      // Simulate debate (in production, would call Claude API)
+      const mockDebate = {
+        id: 'debate-' + Date.now(),
+        topic,
+        participants: advisorDetails,
+        content: `**${advisorDetails[0].name}**: "Based on the document analysis, I believe ${topic} presents a significant opportunity. The data shows..."
+
+**${advisorDetails[1].name}**: "I appreciate the optimism, but we need to consider the financial implications. Our analysis indicates..."
+
+**Consensus**: After thorough discussion, both advisors agree on a phased approach with specific milestones and risk mitigation strategies.`,
+        timestamp: new Date().toISOString(),
+        documentRefs: relevantDocs.map(d => d.id),
+        outcome: 'Consensus reached with action plan'
+      };
+
+      setCurrentDebate(mockDebate);
+      setDebateHistory(prev => [mockDebate, ...prev]);
+
+      // Add to memory
+      const memoryEntry = {
+        type: 'strategic-decision',
+        content: `Debate conclusion: ${mockDebate.outcome}`,
+        context: topic,
+        participants: participants,
+        timestamp: new Date().toISOString(),
+        importance: 8,
+        documentRefs: relevantDocs.map(d => d.id)
+      };
+
+      const newMemory = new Map(conversationMemory);
+      newMemory.set('debate-' + Date.now(), memoryEntry);
+      setConversationMemory(newMemory);
+      updateMemoryStats(newMemory);
+
+      // Update cross-module context
+      onContextUpdate(prev => {
+        const newContext = new Map(prev);
+        newContext.set('v22_last_debate', mockDebate);
+        newContext.set('v22_memory_updated', Date.now());
+        return newContext;
+      });
+
+    } catch (error) {
+      console.error('Debate error:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Quick debate starters based on documents
+  const suggestedDebates = globalDocuments.length > 0 ? [
+    {
+      topic: "Strategic implications of uploaded documents",
+      participants: ['ceo-advisor', 'cfo-advisor'],
+      icon: '🌍'
+    },
+    {
+      topic: "Technical feasibility vs business opportunity",
+      participants: ['cto-advisor', 'ceo-advisor'],
+      icon: '⚡'
+    },
+    {
+      topic: "Customer impact and market positioning",
+      participants: ['cmo-advisor', 'cfo-advisor'],
+      icon: '🎯'
+    }
+  ] : [];
+
+  return (
+    <div className="p-6">
+      <div className="mb-6">
+        <h4 className="text-xl font-bold text-gray-900 mb-2">Advanced AI Features V22</h4>
+        <p className="text-gray-600">Inter-advisor discussions, memory persistence, and deep document analysis</p>
+      </div>
+
+      {/* Navigation Tabs */}
+      <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
+        {[
+          { id: 'inter-advisor', label: 'Inter-Advisor Debates', icon: GitBranch },
+          { id: 'memory', label: 'Memory & Context', icon: Database },
+          { id: 'insights', label: 'Document Insights', icon: Lightbulb }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              activeTab === tab.id
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <tab.icon className="w-4 h-4" />
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Inter-Advisor Debates Tab */}
+      {activeTab === 'inter-advisor' && (
+        <div className="space-y-4">
+          {/* Quick Start Debates */}
+          {globalDocuments.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {suggestedDebates.map((debate, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => startInterAdvisorDebate(debate.topic, debate.participants)}
+                  disabled={isProcessing}
+                  className="p-4 border border-gray-300 rounded-lg hover:bg-gray-50 text-left transition-colors disabled:opacity-50"
+                >
+                  <div className="flex items-center space-x-2 mb-2">
+                    <span className="text-xl">{debate.icon}</span>
+                    <span className="font-medium text-sm">{debate.topic}</span>
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {debate.participants.map(id => enhancedAdvisors[id].name).join(' vs ')}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p>Upload documents to enable context-aware advisor debates</p>
+            </div>
+          )}
+
+          {/* Current Debate */}
+          {currentDebate && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="font-medium">Current Debate: {currentDebate.topic}</h5>
+                <span className="text-sm text-gray-500">
+                  {currentDebate.participants.map(p => p.name).join(' vs ')}
+                </span>
+              </div>
+              <div className="text-sm text-gray-700 whitespace-pre-line">
+                {currentDebate.content}
+              </div>
+              {currentDebate.documentRefs?.length > 0 && (
+                <div className="mt-3 text-xs text-gray-500">
+                  Referenced {currentDebate.documentRefs.length} document(s)
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Debate History */}
+          {debateHistory.length > 0 && (
+            <div className="space-y-2">
+              <h5 className="font-medium text-gray-900">Recent Debates</h5>
+              {debateHistory.map(debate => (
+                <div key={debate.id} className="p-3 border border-gray-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{debate.topic}</span>
+                    <span className="text-xs text-gray-500">
+                      {new Date(debate.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">{debate.outcome}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Memory Tab */}
+      {activeTab === 'memory' && (
+        <div className="space-y-4">
+          {/* Memory Stats */}
+          <div className="grid grid-cols-4 gap-3">
+            <div className="bg-white p-3 rounded-lg border border-gray-200">
+              <Database className="w-5 h-5 text-blue-600 mb-1" />
+              <div className="text-lg font-semibold">{memoryStats.totalEntries}</div>
+              <div className="text-xs text-gray-600">Total Memories</div>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-gray-200">
+              <Target className="w-5 h-5 text-green-600 mb-1" />
+              <div className="text-lg font-semibold">{memoryStats.strategicDecisions}</div>
+              <div className="text-xs text-gray-600">Decisions</div>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-gray-200">
+              <Lightbulb className="w-5 h-5 text-orange-600 mb-1" />
+              <div className="text-lg font-semibold">{memoryStats.businessInsights}</div>
+              <div className="text-xs text-gray-600">Insights</div>
+            </div>
+            <div className="bg-white p-3 rounded-lg border border-gray-200">
+              <CheckCircle className="w-5 h-5 text-purple-600 mb-1" />
+              <div className="text-lg font-semibold">{memoryStats.actionItems}</div>
+              <div className="text-xs text-gray-600">Actions</div>
+            </div>
+          </div>
+
+          {/* Recent Memories */}
+          <div className="space-y-2">
+            <h5 className="font-medium text-gray-900">Recent Memory Entries</h5>
+            {Array.from(conversationMemory.entries()).map(([id, entry]) => (
+              <div key={id} className="p-3 border border-gray-200 rounded-lg">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium">{entry.content}</span>
+                  <span className="text-xs text-gray-500">
+                    {new Date(entry.timestamp).toLocaleDateString()}
+                  </span>
+                </div>
+                <div className="text-xs text-gray-600">{entry.context}</div>
+                {entry.documentRefs?.length > 0 && (
+                  <div className="text-xs text-blue-600 mt-1">
+                    Linked to {entry.documentRefs.length} document(s)
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Document Insights Tab */}
+      {activeTab === 'insights' && (
+        <div className="space-y-4">
+          {globalDocuments.length > 0 ? (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <Lightbulb className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <h5 className="font-medium text-blue-900">Cross-Document Analysis</h5>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Analyzing {globalDocuments.length} documents for patterns and strategic insights...
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Document-based insights */}
+              <div className="space-y-3">
+                {globalDocuments.map(doc => (
+                  <div key={doc.id} className="p-3 border border-gray-200 rounded-lg">
+                    <h6 className="font-medium text-sm mb-2">{doc.name}</h6>
+                    <div className="space-y-1">
+                      {doc.documentData?.type === 'csv' && (
+                        <div className="text-xs text-gray-600">
+                          📊 Structured data with {doc.documentData.rowCount} rows - ideal for trend analysis
+                        </div>
+                      )}
+                      {doc.documentData?.keywords && (
+                        <div className="text-xs text-gray-600">
+                          🔍 Key topics: {doc.documentData.keywords.join(', ')}
+                        </div>
+                      )}
+                      <button
+                        onClick={() => startInterAdvisorDebate(
+                          `Strategic analysis of ${doc.name}`,
+                          ['ceo-advisor', 'cfo-advisor']
+                        )}
+                        className="text-xs text-blue-600 hover:text-blue-800"
+                      >
+                        → Generate advisor analysis
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <FileText className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+              <p>No documents uploaded yet</p>
+              <p className="text-sm mt-1">Upload documents to enable deep AI analysis</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Processing Indicator */}
+      {isProcessing && (
+        <div className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center space-x-2">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>AI advisors are analyzing...</span>
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 const CustomAdvisorIntegrationV23 = ({ isExpanded }) => (
   <div className="p-6">
@@ -495,10 +1165,12 @@ const EnhancedV18Shell = () => {
   const [searchQuery, setSearchQuery] = useState('');
   
   // Module Management
-  const [activeModules, setActiveModules] = useState(new Map());
   const [moduleStates, setModuleStates] = useState(new Map());
   const [crossModuleContext, setCrossModuleContext] = useState(new Map());
   const [notifications, setNotifications] = useState([]);
+  
+  // Global Documents State (persists across workspaces)
+  const [globalDocuments, setGlobalDocuments] = useState([]);
   
   // User State
   const [currentUser, setCurrentUser] = useState({
@@ -633,7 +1305,6 @@ const EnhancedV18Shell = () => {
     allModules.forEach(module => {
       initialStates.set(module.id, {
         enabled: module.status === 'active',
-        expanded: module.priority === 1,
         notifications: 0,
         lastActivity: new Date()
       });
@@ -644,21 +1315,10 @@ const EnhancedV18Shell = () => {
     setTimeout(() => setLoading(false), 1000);
   }, []);
 
-  // ===== MODULE INTERACTION HANDLERS =====
-  const handleModuleInteraction = useCallback((moduleId, action) => {
-    setModuleStates(prevStates => {
-      const newStates = new Map(prevStates);
-      const currentState = newStates.get(moduleId) || {};
-      
-      newStates.set(moduleId, {
-        ...currentState,
-        expanded: action === 'expand' ? true : action === 'collapse' ? false : currentState.expanded,
-        lastActivity: new Date()
-      });
-      
-      return newStates;
-    });
-  }, []);
+  // ===== CONTEXT UPDATES =====
+  useEffect(() => {
+    // Handle any cross-module context updates here if needed
+  }, [crossModuleContext]);
 
   // ===== COMMAND PALETTE COMMANDS =====
   const commandSuggestions = [
@@ -771,6 +1431,14 @@ const EnhancedV18Shell = () => {
         </div>
 
         <div className="flex items-center space-x-4">
+          {/* Document Count */}
+          {globalDocuments.length > 0 && (
+            <div className="flex items-center space-x-2 px-3 py-1 bg-gray-100 rounded-lg">
+              <FileText className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">{globalDocuments.length}</span>
+            </div>
+          )}
+
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -801,15 +1469,12 @@ const EnhancedV18Shell = () => {
   );
 
   const renderModuleCard = (module) => {
-    const moduleState = moduleStates.get(module.id) || {};
     const ModuleComponent = module.component;
 
     return (
       <div
         key={module.id}
-        className={`bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-all duration-300 ${
-          moduleState.expanded ? 'col-span-2' : ''
-        }`}
+        className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
       >
         {/* Module Header */}
         <div className="p-4 border-b border-gray-100">
@@ -823,21 +1488,16 @@ const EnhancedV18Shell = () => {
                 <p className="text-sm text-gray-500">{module.description}</p>
               </div>
             </div>
-            <button
-              onClick={() => handleModuleInteraction(module.id, moduleState.expanded ? 'collapse' : 'expand')}
-              className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              {moduleState.expanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
           </div>
         </div>
 
         {/* Module Content */}
-        <div className={`transition-all duration-300 ${moduleState.expanded ? 'max-h-[600px]' : 'max-h-32'} overflow-hidden`}>
+        <div className="max-h-[600px] overflow-y-auto">
           <ModuleComponent 
-            isExpanded={moduleState.expanded}
             crossModuleContext={crossModuleContext}
             onContextUpdate={setCrossModuleContext}
+            globalDocuments={globalDocuments}
+            setGlobalDocuments={setGlobalDocuments}
           />
         </div>
       </div>
@@ -917,7 +1577,7 @@ const EnhancedV18Shell = () => {
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6">
             {allModules
               .filter(module => module.workspace === activeWorkspace)
               .sort((a, b) => a.priority - b.priority)
