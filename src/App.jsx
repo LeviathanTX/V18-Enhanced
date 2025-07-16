@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 // ===== AI BOARD V20 LIVE CLAUDE MODULE =====
-const AIBoardV20LiveClaude = ({ isExpanded, crossModuleContext, onContextUpdate, globalDocuments, setGlobalDocuments }) => {
+const AIBoardV20LiveClaude = ({ isExpanded, crossModuleContext, onContextUpdate, globalDocuments, setGlobalDocuments, setActiveWorkspace }) => {
   // ===== MODULE STATE =====
   const [messages, setMessages] = useState([]);
   const [currentInput, setCurrentInput] = useState('');
@@ -22,6 +22,7 @@ const AIBoardV20LiveClaude = ({ isExpanded, crossModuleContext, onContextUpdate,
   const [processingAdvisors, setProcessingAdvisors] = useState(new Set());
   const [selectedAdvisors, setSelectedAdvisors] = useState(new Set(['ceo-advisor', 'cfo-advisor']));
   const [meetingActive, setMeetingActive] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState(null);
   
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -174,12 +175,33 @@ Provide strategic advice as ${advisor.name}. If documents are mentioned, referen
   const handleFileUpload = async (event) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      // Pass files to Document Intelligence module via context
-      onContextUpdate(prev => {
-        const newContext = new Map(prev);
-        newContext.set('files_to_process', Array.from(files));
-        return newContext;
+      setUploadStatus('uploading');
+      
+      // Check for duplicates
+      const existingNames = globalDocuments.map(doc => doc.name);
+      const newFiles = Array.from(files).filter(file => {
+        if (existingNames.includes(file.name)) {
+          setUploadStatus({ type: 'error', message: `${file.name} already uploaded` });
+          setTimeout(() => setUploadStatus(null), 3000);
+          return false;
+        }
+        return true;
       });
+      
+      if (newFiles.length > 0) {
+        // Pass files to Document Intelligence module via context
+        onContextUpdate(prev => {
+          const newContext = new Map(prev);
+          newContext.set('files_to_process', newFiles);
+          return newContext;
+        });
+        
+        setUploadStatus({ type: 'success', message: `Processing ${newFiles.length} file(s)...` });
+        setTimeout(() => setUploadStatus(null), 3000);
+      }
+      
+      // Clear file input
+      event.target.value = '';
     }
   };
 
@@ -250,6 +272,34 @@ Provide strategic advice as ${advisor.name}. If documents are mentioned, referen
           </div>
         </div>
 
+        {/* Upload Status */}
+        {uploadStatus && (
+          <div className={`mt-4 p-3 rounded-lg flex items-center space-x-2 ${
+            uploadStatus.type === 'error' 
+              ? 'bg-red-50 border border-red-200' 
+              : uploadStatus === 'uploading'
+              ? 'bg-blue-50 border border-blue-200'
+              : 'bg-green-50 border border-green-200'
+          }`}>
+            {uploadStatus === 'uploading' ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                <span className="text-sm text-blue-700">Uploading files...</span>
+              </>
+            ) : uploadStatus.type === 'error' ? (
+              <>
+                <AlertCircle className="w-4 h-4 text-red-600" />
+                <span className="text-sm text-red-700">{uploadStatus.message}</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle className="w-4 h-4 text-green-600" />
+                <span className="text-sm text-green-700">{uploadStatus.message}</span>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Document Status */}
         {globalDocuments && globalDocuments.length > 0 && (
           <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
@@ -261,11 +311,7 @@ Provide strategic advice as ${advisor.name}. If documents are mentioned, referen
                 </span>
               </div>
               <button
-                onClick={() => onContextUpdate(prev => {
-                  const newContext = new Map(prev);
-                  newContext.set('navigate_to', 'intelligence-center');
-                  return newContext;
-                })}
+                onClick={() => setActiveWorkspace('intelligence-center')}
                 className="text-xs text-green-600 hover:text-green-800 underline"
               >
                 View documents
@@ -384,6 +430,11 @@ const EnhancedDocumentIntelligenceV24 = ({ isExpanded, crossModuleContext, onCon
   // Process files with content reading
   const processFiles = async (files) => {
     for (const file of files) {
+      // Check for duplicates
+      if (globalDocuments.some(doc => doc.name === file.name)) {
+        console.log(`Skipping duplicate: ${file.name}`);
+        continue;
+      }
       await processDocument(file);
     }
   };
@@ -1498,6 +1549,7 @@ const EnhancedV18Shell = () => {
             onContextUpdate={setCrossModuleContext}
             globalDocuments={globalDocuments}
             setGlobalDocuments={setGlobalDocuments}
+            setActiveWorkspace={setActiveWorkspace}
           />
         </div>
       </div>
