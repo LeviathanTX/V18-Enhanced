@@ -299,7 +299,7 @@ npm run build
 ### **Deployment Pipeline**
 - **Repository**: GitHub (LeviathanTX/AI-Bod-CO)
 - **Hosting**: Vercel with auto-deployment
-- **Live URL**: https://ai-bod-co.vercel.app
+- **Live URL**: https://ai-bod-co-v18enhanced.vercel.app
 - **Build**: Automatic on `git push origin main`
 
 ### **Core Components**

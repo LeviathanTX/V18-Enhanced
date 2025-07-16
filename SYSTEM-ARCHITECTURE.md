@@ -138,7 +138,7 @@ git push origin main
 ```
 
 ### **Vercel Integration**
-- **Live URL**: `https://ai-bod-co.vercel.app`
+- **Live URL**: `https://ai-bod-co-v18enhanced.vercel.app`
 - **Auto-Deploy**: Triggered on every `git push origin main`
 - **Build Command**: `npm run build` (Vite)
 - **Output Directory**: `dist/`
@@ -459,7 +459,7 @@ git push --force origin main
 ### **Contact Information**
 - **Primary Developer**: Jeff Levine
 - **Repository**: https://github.com/LeviathanTX/AI-Bod-CO
-- **Live Platform**: https://ai-bod-co.vercel.app
+- **Live Platform**: https://ai-bod-co-v18enhanced.vercel.app
 - **Development Environment**: Local desktop `/Users/jeffl/Desktop/AI-Bod-CO`
 
 ---

@@ -8,7 +8,10 @@ import {
   Briefcase, DollarSign, Lightbulb, Eye, PlayCircle, Pause, Volume2, VolumeX
 } from 'lucide-react';
 
-// ===== AI BOARD V18 ENHANCED - FIXED CORE SHELL WITH ADVISORY BOARD =====
+// Import the Document Intelligence Module
+import DocumentIntelligenceModule from './modules/DocumentIntelligenceModule';
+
+// ===== AI BOARD V18 ENHANCED - WITH INTEGRATED DOCUMENT INTELLIGENCE =====
 function App() {
   // ===== CORE STATE =====
   const [isExpanded, setIsExpanded] = useState(false);
@@ -27,6 +30,7 @@ function App() {
   const [installedModules, setInstalledModules] = useState(new Map());
   const [moduleStatuses, setModuleStatuses] = useState(new Map());
   const [integrationHealth, setIntegrationHealth] = useState('excellent');
+  const [documentInsights, setDocumentInsights] = useState([]);
   
   // Subscription & Business State
   const [subscriptionTier, setSubscriptionTier] = useState('professional');
@@ -117,7 +121,8 @@ function App() {
       icon: FileText,
       status: 'active', 
       description: 'Advanced document analysis & insights',
-      tier: 'professional'
+      tier: 'professional',
+      component: DocumentIntelligenceModule
     },
     {
       id: 'v22-advanced-ai',
@@ -226,6 +231,22 @@ function App() {
     setModuleStatuses(statusMap);
   };
 
+  // ===== DOCUMENT INTELLIGENCE INTEGRATION =====
+  const handleDocumentInsight = (insight) => {
+    setDocumentInsights(prev => [...prev, insight]);
+    
+    // Notify advisors about new document insights
+    if (meetingActive && insight.insights && insight.insights.length > 0) {
+      const insightMessage = {
+        id: `msg-insight-${Date.now()}`,
+        type: 'system',
+        content: `📄 Document analyzed: ${insight.insights[0]}`,
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, insightMessage]);
+    }
+  };
+
   // ===== AI ADVISORY FUNCTIONS =====
   const handleSendMessage = async () => {
     if (!currentInput.trim()) return;
@@ -272,16 +293,20 @@ function App() {
 
   const generateAdvisorResponse = async (advisor, question) => {
     try {
+      // Include document insights in context
+      const recentInsights = documentInsights.slice(-3).map(i => i.insights).flat().join('; ');
+      
       // Use Claude's completion API for realistic advisor responses
       const prompt = `You are ${advisor.name}, a ${advisor.title} on an AI Board of Advisors. 
 
 Your expertise: ${advisor.expertise}
 Your personality: ${advisor.personality}
 Documents available: ${documents.map(d => d.name).join(', ')}
+Recent document insights: ${recentInsights || 'None yet'}
 
 The user asked: "${question}"
 
-Respond as this advisor would, providing strategic business guidance. Be specific, actionable, and reference the uploaded documents when relevant. Keep your response to 2-3 sentences maximum.`;
+Respond as this advisor would, providing strategic business guidance. Be specific, actionable, and reference the uploaded documents and insights when relevant. Keep your response to 2-3 sentences maximum.`;
 
       const response = await window.claude.complete(prompt);
       return response;
@@ -479,6 +504,14 @@ Respond as this advisor would, providing strategic business guidance. Be specifi
         </div>
       </div>
 
+      {/* Document Intelligence Module Integration */}
+      <DocumentIntelligenceModule
+        onIntegrationReady={() => console.log('Document Intelligence Module Ready')}
+        selectedAdvisors={selectedAdvisors}
+        meetingActive={meetingActive}
+        onDocumentInsight={handleDocumentInsight}
+      />
+
       {/* Module Status Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {coreModules.map(module => {
@@ -570,49 +603,13 @@ Respond as this advisor would, providing strategic business guidance. Be specifi
         </div>
       </div>
 
-      {/* Document Upload */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">Documents & Context</h3>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-          >
-            <Upload className="w-4 h-4" />
-            <span>Upload Documents</span>
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            onChange={handleFileUpload}
-            className="hidden"
-            accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls"
-          />
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {documents.map(doc => (
-            <div key={doc.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border">
-              <FileText className="w-5 h-5 text-blue-500" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 truncate">{doc.name}</p>
-                <p className="text-sm text-gray-600">{(doc.size / 1024 / 1024).toFixed(1)} MB</p>
-                {doc.insights && (
-                  <p className="text-xs text-green-600 mt-1">{doc.insights}</p>
-                )}
-              </div>
-              <span className={`text-xs px-2 py-1 rounded-full ${
-                doc.status === 'analyzed' ? 'bg-green-100 text-green-800' :
-                doc.status === 'processing' ? 'bg-yellow-100 text-yellow-800' :
-                'bg-gray-100 text-gray-800'
-              }`}>
-                {doc.status}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Document Intelligence Module for Advisory View */}
+      <DocumentIntelligenceModule
+        onIntegrationReady={() => console.log('Document Intelligence Module Ready')}
+        selectedAdvisors={selectedAdvisors}
+        meetingActive={meetingActive}
+        onDocumentInsight={handleDocumentInsight}
+      />
 
       {/* Advisory Chat Interface */}
       <div className="bg-white rounded-lg border border-gray-200">
