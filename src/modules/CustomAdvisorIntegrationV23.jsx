@@ -12,8 +12,7 @@ import {
 } from 'lucide-react';
 
 // ===== AI BOARD V23 - CUSTOM ADVISOR INTEGRATION & MANAGEMENT MODULE =====
-// Designed to integrate with V18 Core Shell and V22 Advanced AI Features
-const CustomAdvisorIntegrationModule = () => {
+const CustomAdvisorIntegrationV23 = ({ apiKey }) => {
   // ===== MODULE STATE =====
   const [isExpanded, setIsExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState('management');
@@ -50,7 +49,16 @@ const CustomAdvisorIntegrationModule = () => {
   // Integration State
   const [integrationStatus, setIntegrationStatus] = useState(new Map());
   const [performanceMetrics, setPerformanceMetrics] = useState(new Map());
-  const [advisorUsageStats, setAdvisorUsageStats] = useState({});
+  const [advisorUsageStats, setAdvisorUsageStats] = useState({
+    totalCustomAdvisors: 0,
+    activeAdvisors: 0,
+    trainingAdvisors: 0,
+    totalConversations: 0,
+    avgSatisfactionScore: 0,
+    businessImpactHigh: 0,
+    businessImpactMedium: 0,
+    businessImpactLow: 0
+  });
   
   // Advanced Management State
   const [advisorConversations, setAdvisorConversations] = useState(new Map());
@@ -64,7 +72,7 @@ const CustomAdvisorIntegrationModule = () => {
   const trainingRef = useRef(null);
 
   // ===== PREDEFINED TEMPLATES AND OPTIONS =====
-  const [defaultTemplates] = useState([
+  const defaultTemplates = [
     {
       id: 'executive-coach',
       name: 'Executive Coach',
@@ -121,7 +129,7 @@ const CustomAdvisorIntegrationModule = () => {
       category: 'risk',
       estimatedTrainingTime: '40 minutes'
     }
-  ]);
+  ];
 
   const expertiseOptions = [
     'strategy', 'finance', 'marketing', 'technology', 'operations', 'hr', 'legal',
@@ -273,8 +281,14 @@ const CustomAdvisorIntegrationModule = () => {
 
   // ===== CUSTOM ADVISOR MANAGEMENT FUNCTIONS =====
   const createCustomAdvisor = async (advisorData) => {
+    if (!apiKey) {
+      alert('API key is required to create custom advisors');
+      return;
+    }
+
     setIsTraining(true);
     setTrainingProgress(0);
+    setShowTrainingModal(true);
 
     try {
       // Simulate training process
@@ -323,6 +337,8 @@ const CustomAdvisorIntegrationModule = () => {
   };
 
   const integrateWithAdvancedAI = async (advisorId) => {
+    if (!apiKey) return;
+    
     // Simulate integration with V22 Advanced AI Features
     await new Promise(resolve => setTimeout(resolve, 1000));
     
@@ -424,7 +440,13 @@ const CustomAdvisorIntegrationModule = () => {
         </div>
         <div className="flex space-x-3">
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => {
+              if (!apiKey) {
+                alert('Please configure API key in main settings to create custom advisors');
+                return;
+              }
+              setShowCreateModal(true);
+            }}
             className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -949,7 +971,7 @@ const CustomAdvisorIntegrationModule = () => {
               ) : (
                 <button
                   onClick={() => createCustomAdvisor(advisorForm)}
-                  disabled={isTraining}
+                  disabled={isTraining || !apiKey}
                   className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
                 >
                   {isTraining && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -1223,6 +1245,18 @@ const CustomAdvisorIntegrationModule = () => {
       {/* Module Content */}
       {isExpanded && (
         <div className="p-6">
+          {!apiKey && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center space-x-2 text-yellow-800">
+                <AlertCircle className="w-5 h-5" />
+                <span className="font-medium">API Key Required</span>
+              </div>
+              <p className="text-sm text-yellow-700 mt-1">
+                Please configure your API key in the main settings to use custom advisor features.
+              </p>
+            </div>
+          )}
+          
           {/* Navigation Tabs */}
           <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
             {[
@@ -1288,7 +1322,9 @@ const CustomAdvisorIntegrationModule = () => {
               onClick={() => {
                 setIsExpanded(true);
                 setActiveTab('management');
-                setShowCreateModal(true);
+                if (apiKey) {
+                  setShowCreateModal(true);
+                }
               }}
               className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200 transition-colors"
             >
@@ -1323,4 +1359,4 @@ const CustomAdvisorIntegrationModule = () => {
   );
 };
 
-export default CustomAdvisorIntegrationModule;
+export default CustomAdvisorIntegrationV23;
